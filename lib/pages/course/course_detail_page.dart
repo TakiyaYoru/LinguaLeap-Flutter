@@ -91,11 +91,13 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       });
 
       // Load course info
+      print('📚 Loading course info for ID: ${widget.courseId}');
       final courseData = await CourseService.getCourse(widget.courseId);
       
       if (!mounted || _isDisposed) return;
       
       if (courseData == null) {
+        print('❌ Course data is null');
         setState(() {
           errorMessage = 'Course not found';
           isLoading = false;
@@ -104,16 +106,21 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
       }
 
       // Load course units
+      print('📚 Loading units for course: ${widget.courseId}');
       final unitsData = await CourseService.getCourseUnits(widget.courseId);
+      print('📦 Units data received: $unitsData');
       
       if (!mounted || _isDisposed) return;
       
+      print('🔄 Updating state with course and ${unitsData?.length ?? 0} units');
       setState(() {
         course = CourseModel.fromJson(courseData);
         units = unitsData ?? [];
         isLoading = false;
       });
+      print('✅ State updated - Course: ${course?.title}, Units: ${units.length}');
     } catch (e) {
+      print('❌ Error in _loadCourseDetail: $e');
       if (!mounted || _isDisposed) return;
       
       setState(() {
@@ -259,6 +266,7 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
   }
 
   Widget _buildUnitsSection() {
+    print('🎯 Building units section - Units count: ${units.length}');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -289,7 +297,10 @@ class _CourseDetailPageState extends State<CourseDetailPage> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: units.length,
-            itemBuilder: (context, index) => _buildUnitCard(units[index], index),
+            itemBuilder: (context, index) {
+              print('🔨 Building unit card for index $index');
+              return _buildUnitCard(units[index], index);
+            },
           ),
       ],
     );

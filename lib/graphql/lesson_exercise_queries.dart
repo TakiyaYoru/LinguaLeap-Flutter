@@ -11,22 +11,27 @@ class LessonExerciseQueries {
         id
         title
         description
-        unitId
         courseId
+        unitId
+        type
+        lesson_type
         objective
-        estimatedDuration
+        icon
+        thumbnail
         totalExercises
+        estimatedDuration
         difficulty
-        xpReward
         isPremium
         isPublished
+        xpReward
+        perfectScoreBonus
+        targetAccuracy
+        passThreshold
         sortOrder
-        unlockRequirements {
-          previousLessonId
-          minimumScore
-        }
+        isCompleted
+        isUnlocked
+        userScore
         createdAt
-        updatedAt
       }
     }
   ''';
@@ -38,22 +43,27 @@ class LessonExerciseQueries {
         id
         title
         description
-        unitId
         courseId
+        unitId
+        type
+        lesson_type
         objective
-        estimatedDuration
+        icon
+        thumbnail
         totalExercises
+        estimatedDuration
         difficulty
-        xpReward
         isPremium
         isPublished
+        xpReward
+        perfectScoreBonus
+        targetAccuracy
+        passThreshold
         sortOrder
-        unlockRequirements {
-          previousLessonId
-          minimumScore
-        }
+        isCompleted
+        isUnlocked
+        userScore
         createdAt
-        updatedAt
       }
     }
   ''';

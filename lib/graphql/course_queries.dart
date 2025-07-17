@@ -1,4 +1,4 @@
-// lib/core/graphql/course_queries.dart
+// lib/graphql/course_queries.dart
 
 class CourseQueries {
   // Get all courses
@@ -104,42 +104,19 @@ class CourseQueries {
         id
         title
         description
-        courseId
         theme
         icon
         color
         totalLessons
         totalExercises
         estimatedDuration
-        prerequisites {
-          previous_unit_id
-          minimum_score
-          required_hearts
-        }
-        challenge_test {
-          total_questions
-          pass_percentage
-          must_correct_questions
-          time_limit
-        }
         isPremium
         isPublished
         xpReward
         sortOrder
         progressPercentage
         isUnlocked
-        vocabulary {
-          word
-          meaning
-          pronunciation
-          audioUrl
-          example {
-            sentence
-            translation
-          }
-        }
         createdAt
-        updatedAt
       }
     }
   ''';

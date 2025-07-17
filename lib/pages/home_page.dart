@@ -62,7 +62,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         backgroundColor: const Color(0xFF40C4AA),
-        title: const Text('N5', style: TextStyle(color: Colors.white)),
+        title: const Text('Trang chủ', style: TextStyle(color: Colors.white)),
         actions: [
           IconButton(
             icon: const Icon(Icons.menu, color: Colors.white),
@@ -183,7 +183,7 @@ class _HomePageState extends State<HomePage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         image: const DecorationImage(
-          image: NetworkImage('https://placekitten.com/400/200'), // Placeholder
+          image: NetworkImage('https://tinhhoaschool.edu.vn/wp-content/uploads/2021/07/slide-2.jpg'), // Placeholder
           fit: BoxFit.cover,
         ),
       ),
@@ -193,7 +193,7 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               gradient: LinearGradient(
-                colors: [Colors.black.withOpacity(0.6), Colors.transparent],
+                colors: [Colors.black.withOpacity(0.1), Colors.transparent],
               ),
             ),
           ),

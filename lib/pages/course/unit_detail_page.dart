@@ -27,14 +27,12 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
   // Animation controller for path drawing
   late AnimationController _pathController;
   
-  // Mock data for progress - should come from backend
-  final currentLessonId = "lesson_3";
-  final completedLessons = ["lesson_1", "lesson_2"];
-  final userProgress = {
-    "totalXP": 450,
-    "currentStreak": 5,
+  // Progress data
+  Map<String, dynamic> userProgress = {
+    "totalXP": 0,
+    "currentStreak": 0,
     "hearts": 5,
-    "unitProgress": 0.4, // 40% complete
+    "unitProgress": 0.0,
   };
 
   @override
@@ -85,6 +83,12 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
         setState(() {
           lessons = lessonsData;
           isLoading = false;
+          
+          // Calculate unit progress
+          if (lessons.isNotEmpty) {
+            final completedCount = lessons.where((l) => l['isCompleted'] == true).length;
+            userProgress['unitProgress'] = completedCount / lessons.length;
+          }
         });
       } else {
         setState(() {
@@ -105,89 +109,217 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F7),
-      body: CustomScrollView(
-        slivers: [
-          // Custom app bar with unit info
-          _buildAppBar(),
-          
-          // Main content
-          SliverToBoxAdapter(
-            child: _buildBody(),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFF40C4AA),
+                    const Color(0xFF40C4AA).withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF40C4AA).withOpacity(0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Bar with Back Button
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.of(context).pop(),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      _buildProgressRing(),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Title and Progress
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.unitTitle,
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${lessons.length} lessons • ${(userProgress['unitProgress'] * 100).toInt()}% complete',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  // Stats Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildStatCard(
+                        icon: '🔥',
+                        value: userProgress['currentStreak'].toString(),
+                        label: 'Streak',
+                        color: Colors.orange,
+                      ),
+                      _buildStatCard(
+                        icon: '⭐',
+                        value: userProgress['totalXP'].toString(),
+                        label: 'XP',
+                        color: Colors.amber,
+                      ),
+                      _buildStatCard(
+                        icon: '❤️',
+                        value: '${userProgress['hearts']}/5',
+                        label: 'Hearts',
+                        color: Colors.red,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // Lessons List
+            Expanded(
+              child: _buildLessonsList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProgressRing() {
+    final progress = userProgress['unitProgress'] as double;
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        shape: BoxShape.circle,
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          CircularProgressIndicator(
+            value: progress,
+            backgroundColor: Colors.white.withOpacity(0.1),
+            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            strokeWidth: 3,
+          ),
+          Text(
+            '${(progress * 100).toInt()}%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      expandedHeight: 200,
-      pinned: true,
-      backgroundColor: const Color(0xFF40C4AA),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF40C4AA),
-                const Color(0xFF40C4AA).withOpacity(0.8),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 40),
-                  Text(
-                    widget.unitTitle,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${lessons.length} lessons • ${userProgress['unitProgress']! * 100}% complete',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Progress stats
-                  Row(
-                    children: [
-                      _buildStatChip('🔥 ${userProgress['currentStreak']} days', Colors.orange),
-                      const SizedBox(width: 8),
-                      _buildStatChip('⭐ ${userProgress['totalXP']} XP', Colors.amber),
-                      const SizedBox(width: 8),
-                      _buildStatChip('❤️ ${userProgress['hearts']}/5', Colors.red),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+  Widget _buildStatCard({
+    required String icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
         ),
       ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-        onPressed: () => Navigator.of(context).pop(),
+      child: Column(
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                icon,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 12,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBody() {
+  Widget _buildLessonsList() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF40C4AA)),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF40C4AA)),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading lessons...',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -214,57 +346,49 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
+                elevation: 2,
               ),
-              child: const Text('Retry'),
+              child: const Text(
+                'Retry',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
       );
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        children: [
-          const SizedBox(height: 24),
-          
-          // Learning path
-          ...List.generate(lessons.length, (index) {
-            final lesson = lessons[index];
-            final isCompleted = completedLessons.contains(lesson['id']);
-            final isCurrent = lesson['id'] == currentLessonId;
-            final isLocked = !isCompleted && !isCurrent && completedLessons.isNotEmpty;
-            
-            return _buildLessonItem(
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: lessons.length,
+      itemBuilder: (context, index) {
+        final lesson = lessons[index];
+        final isCompleted = lesson['isCompleted'] ?? false;
+        final isUnlocked = lesson['isUnlocked'] ?? (index == 0);
+        final isCurrent = !isCompleted && isUnlocked;
+        final isLocked = !isUnlocked;
+        
+        return Column(
+          children: [
+            if (index > 0)
+              Container(
+                width: 2,
+                height: 40,
+                color: isCompleted ? const Color(0xFF40C4AA).withOpacity(0.3) : Colors.grey.shade200,
+              ),
+            _buildLessonItem(
               lesson,
               index,
               isCompleted: isCompleted,
               isCurrent: isCurrent,
               isLocked: isLocked,
-            );
-          }),
-          
-          const SizedBox(height: 32),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: color.withOpacity(0.9),
-        ),
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -277,38 +401,24 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
   }) {
     final lessonType = lesson['type'] ?? 'lesson';
     
-    return Column(
-      children: [
-        // Connection line
-        if (index > 0)
-          AnimatedBuilder(
-            animation: _pathController,
-            builder: (context, child) {
-              return Container(
-                width: 3,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      isCompleted ? const Color(0xFF40C4AA) : Colors.grey.shade300,
-                      isCompleted ? const Color(0xFF40C4AA).withOpacity(0.3) : Colors.grey.shade200,
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  ),
-                ),
-              );
-            },
-          ),
-          
-        // Lesson card
-        InkWell(
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           onTap: isLocked ? null : () => _handleLessonTap(lesson),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: _getLessonColor(isCompleted, isCurrent, isLocked),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isCompleted
+                    ? const Color(0xFF40C4AA).withOpacity(0.3)
+                    : Colors.grey.shade200,
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.05),
@@ -321,21 +431,28 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
               children: [
                 // Status icon
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 56,
+                  height: 56,
                   decoration: BoxDecoration(
                     color: _getIconColor(isCompleted, isCurrent, isLocked),
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: _getIconColor(isCompleted, isCurrent, isLocked).withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Icon(
                       _getLessonIcon(lessonType, isCompleted, isCurrent, isLocked),
                       color: Colors.white,
-                      size: 24,
+                      size: 28,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 20),
                 
                 // Lesson info
                 Expanded(
@@ -347,20 +464,21 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: isLocked ? Colors.grey : Colors.black,
+                          color: isLocked ? Colors.grey.shade400 : Colors.black87,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         lesson['description'] ?? 'Complete this lesson to continue',
                         style: TextStyle(
                           fontSize: 14,
-                          color: isLocked ? Colors.grey : Colors.grey.shade600,
+                          color: isLocked ? Colors.grey.shade400 : Colors.grey.shade600,
+                          height: 1.3,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Row(
                         children: [
                           _buildLessonStat(
@@ -381,53 +499,76 @@ class _UnitDetailPageState extends State<UnitDetailPage> with SingleTickerProvid
                 ),
                 
                 // Right icon/status
-                Icon(
-                  isCompleted ? Icons.check_circle :
-                  isCurrent ? Icons.play_circle_fill :
-                  isLocked ? Icons.lock : Icons.arrow_forward_ios,
-                  color: isCompleted ? Colors.green :
-                         isCurrent ? const Color(0xFF40C4AA) :
-                         isLocked ? Colors.grey : Colors.grey.shade400,
-                  size: 24,
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(isCompleted, isCurrent, isLocked).withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Icon(
+                      isCompleted ? Icons.check_circle :
+                      isCurrent ? Icons.play_circle_fill :
+                      isLocked ? Icons.lock : Icons.arrow_forward_ios,
+                      color: _getStatusColor(isCompleted, isCurrent, isLocked),
+                      size: 24,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildLessonStat(IconData icon, String text, bool isLocked) {
-    final color = isLocked ? Colors.grey : Colors.grey.shade600;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 12,
-            color: color,
+    final color = isLocked ? Colors.grey.shade400 : Colors.grey.shade600;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   Color _getLessonColor(bool isCompleted, bool isCurrent, bool isLocked) {
-    if (isLocked) return Colors.grey.shade100;
-    if (isCompleted) return Colors.green.shade50;
-    if (isCurrent) return const Color(0xFF40C4AA).withOpacity(0.1);
+    if (isLocked) return Colors.grey.shade50;
+    if (isCompleted) return const Color(0xFF40C4AA).withOpacity(0.05);
+    if (isCurrent) return Colors.white;
     return Colors.white;
   }
 
   Color _getIconColor(bool isCompleted, bool isCurrent, bool isLocked) {
-    if (isLocked) return Colors.grey;
-    if (isCompleted) return Colors.green;
+    if (isLocked) return Colors.grey.shade400;
+    if (isCompleted) return const Color(0xFF40C4AA);
     if (isCurrent) return const Color(0xFF40C4AA);
-    return Colors.orange;
+    return const Color(0xFF40C4AA);
+  }
+
+  Color _getStatusColor(bool isCompleted, bool isCurrent, bool isLocked) {
+    if (isLocked) return Colors.grey.shade400;
+    if (isCompleted) return const Color(0xFF40C4AA);
+    if (isCurrent) return const Color(0xFF40C4AA);
+    return Colors.grey.shade600;
   }
 
   IconData _getLessonIcon(String type, bool isCompleted, bool isCurrent, bool isLocked) {

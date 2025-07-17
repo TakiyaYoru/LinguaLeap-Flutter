@@ -1,63 +1,70 @@
-// lib/network/lesson_service.dart - FIXED
+// lib/network/lesson_service.dart
 import 'package:graphql_flutter/graphql_flutter.dart';
-import '../graphql/course_queries.dart';
+import '../graphql/lesson_exercise_queries.dart';
 import 'graphql_client.dart';
 
 class LessonService {
-  // ===============================================
-  // GET LESSONS FOR UNIT
-  // ===============================================
+  // Get lessons for a unit
   static Future<List<Map<String, dynamic>>?> getUnitLessons(String unitId) async {
     try {
-      print('🔥 Fetching lessons for unit: $unitId');
+      print('📚 Loading lessons for unit: $unitId');
+      
       final QueryOptions options = QueryOptions(
-        document: gql(CourseQueries.getUnitLessons),
+        document: gql(LessonExerciseQueries.getUnitLessons),
         variables: {'unitId': unitId},
         fetchPolicy: FetchPolicy.networkOnly,
       );
+
+      print('📤 Sending getUnitLessons query...');
       final QueryResult result = await GraphQLService.client.query(options);
+      
+      print('📥 Get lessons response: ${result.data}');
+      print('📊 Get lessons hasException: ${result.hasException}');
+      
       if (result.hasException) {
-        print('getUnitLessons error: ${result.exception}');
+        print('❌ Get lessons error: ${result.exception}');
         return null;
       }
-      final lessons = result.data?['unitLessons'];
-      if (lessons is List) {
-        print('✅ Found ${lessons.length} lessons for unit $unitId');
-        return lessons.cast<Map<String, dynamic>>();
+
+      final lessonsData = result.data?['unitLessons'];
+      if (lessonsData is List) {
+        print('✅ Found ${lessonsData.length} lessons');
+        return lessonsData.cast<Map<String, dynamic>>();
       }
+      
       print('⚠️ No lessons data found');
       return null;
     } catch (e) {
-      print('❌ Error fetching unit lessons: $e');
+      print('❌ Get lessons error: $e');
       return null;
     }
   }
 
-  // ===============================================
-  // GET SINGLE LESSON
-  // ===============================================
+  // Get single lesson
   static Future<Map<String, dynamic>?> getLesson(String lessonId) async {
     try {
-      print('🔥 Fetching lesson: $lessonId');
+      print('📚 Loading lesson: $lessonId');
+      
       final QueryOptions options = QueryOptions(
-        document: gql(CourseQueries.getUnitLessons), // Sử dụng query lesson nếu có
+        document: gql(LessonExerciseQueries.getLesson),
         variables: {'id': lessonId},
         fetchPolicy: FetchPolicy.networkOnly,
       );
+
+      print('📤 Sending getLesson query...');
       final QueryResult result = await GraphQLService.client.query(options);
+      
+      print('📥 Get lesson response: ${result.data}');
+      print('📊 Get lesson hasException: ${result.hasException}');
+      
       if (result.hasException) {
-        print('getLesson error: ${result.exception}');
+        print('❌ Get lesson error: ${result.exception}');
         return null;
       }
-      final lesson = result.data?['lesson'];
-      if (lesson != null) {
-        print('✅ Lesson found: ${lesson['title']}');
-        return Map<String, dynamic>.from(lesson);
-      }
-      print('⚠️ No lesson data found');
-      return null;
+
+      return result.data?['lesson'];
     } catch (e) {
-      print('❌ Error fetching lesson: $e');
+      print('❌ Get lesson error: $e');
       return null;
     }
   }
