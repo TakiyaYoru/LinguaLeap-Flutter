@@ -17,6 +17,11 @@ class GraphQLService {
         getToken: () async {
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString(AppConstants.tokenKey);
+          print('🔐 [GraphQLClient] Token from SharedPreferences: ${token != null ? 'Found' : 'Not found'}');
+          if (token != null) {
+            print('🔐 [GraphQLClient] Token length: ${token.length}');
+            print('🔐 [GraphQLClient] Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+          }
           return token != null ? 'Bearer $token' : null;
         },
       );

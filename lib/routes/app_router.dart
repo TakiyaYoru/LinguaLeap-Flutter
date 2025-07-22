@@ -2,9 +2,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:lingualeap_app/pages/practice/reading_practice_page.dart';
-import '../pages/test_backend_page.dart';
-import '../pages/test_page.dart';
-import '../pages/test_units_page.dart';
+
 
 // Import các page
 import '../pages/auth/login_page.dart';
@@ -22,6 +20,7 @@ import '../pages/settings_page.dart';
 import '../network/auth_service.dart';
 import '../models/user_model.dart';
 import '../widgets/main_layout.dart';
+import '../pages/learnmap_page.dart';
 
 class AppRouter {
   static const String login = '/login';
@@ -93,23 +92,7 @@ class AppRouter {
         path: '/reading-practice',
         builder: (context, state) => const ReadingPracticePage(),
       ),
-      
-      // Test routes (no shell)
-      GoRoute(
-        path: testBackend,
-        builder: (context, state) => const TestBackendPage(),
-      ),
-      
-      GoRoute(
-        path: testModels,
-        builder: (context, state) => const TestPage(),
-      ),
-      
-      GoRoute(
-        path: testUnits,
-        builder: (context, state) => const TestUnitsPage(),
-      ),
-      
+
       // Exercise container route (no shell) ← NEW
       GoRoute(
         path: exerciseContainer,
@@ -159,7 +142,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: courses,
-                builder: (context, state) => const CoursesPage(),
+                builder: (context, state) => const LearnmapPage(),
               ),
             ],
           ),
