@@ -24,7 +24,8 @@ class LessonDetailPage extends StatefulWidget {
   State<LessonDetailPage> createState() => _LessonDetailPageState();
 }
 
-class _LessonDetailPageState extends State<LessonDetailPage> {
+class _LessonDetailPageState extends State<LessonDetailPage> 
+    with TickerProviderStateMixin { // Added for animations
   List<Map<String, dynamic>> exercises = [];
   int currentExerciseIndex = 0;
   late int hearts;
@@ -33,11 +34,62 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
   bool isLessonCompleted = false;
   Set<String> completedExercises = {};
 
+  // Animation controllers for enhanced UI
+  late AnimationController _progressAnimationController;
+  late AnimationController _feedbackController;
+  late Animation<double> _progressAnimation;
+  late Animation<Offset> _slideAnimation;
+  
+  // Theme colors
+  static const Color primaryColor = Color(0xFF40C4AA);
+  static const Color correctColor = Color(0xFF58CC02);
+  static const Color wrongColor = Color(0xFFFF4B4B);
+
   @override
   void initState() {
     super.initState();
     hearts = widget.currentHearts;
+    
+    // Initialize animations
+    _progressAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _progressAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _progressAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    _feedbackController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _feedbackController,
+      curve: Curves.easeOut,
+    ));
+    
     _loadExercises();
+  }
+
+  @override
+  void dispose() {
+    _progressAnimationController.dispose();
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  void _updateProgress() {
+    if (exercises.isNotEmpty) {
+      final progress = (currentExerciseIndex + 1) / exercises.length;
+      _progressAnimationController.animateTo(progress);
+    }
   }
 
   Future<void> _loadExercises() async {
@@ -55,6 +107,7 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
           exercises = exercisesData;
           isLoading = false;
         });
+        _updateProgress(); // Update progress animation
         print('✅ Loaded ${exercises.length} exercises');
       } else {
         setState(() {
@@ -186,21 +239,31 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: correctColor,
         title: const Row(
           children: [
-            Icon(Icons.check_circle, color: Colors.green),
-            SizedBox(width: 8),
-            Text('Đúng rồi!'),
+            Icon(Icons.check_circle, color: Colors.white, size: 32),
+            SizedBox(width: 12),
+            Text('Correct!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text(correctMessage),
+        content: Text(
+          correctMessage,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               _nextExercise();
             },
-            child: const Text('Tiếp tục'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: correctColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('CONTINUE', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -216,23 +279,33 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: wrongColor,
         title: const Row(
           children: [
-            Icon(Icons.cancel, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Chưa đúng'),
+            Icon(Icons.cancel, color: Colors.white, size: 32),
+            SizedBox(width: 12),
+            Text('Wrong!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
-        content: Text(incorrectMessage),
+        content: Text(
+          incorrectMessage,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               // Đưa câu hỏi về cuối để làm lại
               final wrongExercise = exercises.removeAt(currentExerciseIndex);
               exercises.add(wrongExercise);
             },
-            child: const Text('Thử lại'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: wrongColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('TRY AGAIN', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -244,27 +317,29 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.favorite_border, color: Colors.red),
-            SizedBox(width: 8),
-            Text('Hết hearts'),
+            Icon(Icons.favorite_border, color: Colors.red, size: 32),
+            SizedBox(width: 12),
+            Text('No Hearts Left!'),
           ],
         ),
-        content: const Text('Bạn đã hết hearts. Hãy mua thêm hoặc chờ hồi phục.'),
+        content: const Text('You\'ve run out of hearts. Purchase more hearts or wait for them to refill.'),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _buyHearts();
             },
-            child: const Text('Mua hearts'),
+            child: const Text('GET HEARTS'),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
             },
-            child: const Text('Đóng'),
+            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            child: const Text('CLOSE', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -283,6 +358,7 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
       setState(() {
         currentExerciseIndex++;
       });
+      _updateProgress(); // Update progress animation
     } else {
       // Kiểm tra xem tất cả exercises đã completed chưa
       if (completedExercises.length == exercises.length) {
@@ -292,6 +368,7 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
         setState(() {
           currentExerciseIndex = 0; // Quay về đầu
         });
+        _updateProgress();
       }
     }
   }
@@ -305,52 +382,77 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
     print('🎉 [LessonDetailPage] Completed exercises: ${completedExercises.length}/${exercises.length}');
 
     // Gọi callback để cập nhật progress
-    if (widget.onLessonCompleted != null) {
-      widget.onLessonCompleted(widget.unitId, widget.lessonId, 'completed');
-    }
+    widget.onLessonCompleted(widget.unitId, widget.lessonId, 'completed');
 
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Row(
           children: [
-            Icon(Icons.celebration, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Chúc mừng!'),
+            Icon(Icons.celebration, color: Colors.orange, size: 32),
+            SizedBox(width: 12),
+            Text('Congratulations!', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Bạn đã hoàn thành lesson này!'),
-            const SizedBox(height: 16),
+            const Text('You completed this lesson!', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Column(
-                  children: [
-                    const Icon(Icons.star, color: Colors.yellow, size: 32),
-                    const Text('+50 XP'),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.star, color: Colors.orange, size: 32),
+                      SizedBox(height: 4),
+                      Text('+50 XP', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
-                Column(
-                  children: [
-                    const Icon(Icons.monetization_on, color: Colors.orange, size: 32),
-                    const Text('+10 Coins'),
-                  ],
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Column(
+                    children: [
+                      Icon(Icons.monetization_on, color: Colors.blue, size: 32),
+                      SizedBox(height: 4),
+                      Text('+10 Coins', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               ],
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              // Chỉ pop dialog, không pop page
-              Navigator.of(context).pop();
-            },
-            child: const Text('Hoàn thành'),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'AWESOME!',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
           ),
         ],
       ),
@@ -382,52 +484,95 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Question
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.purple[50],
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.purple[200]!),
-          ),
-          child: Text(
-            question,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-            ),
+        // Enhanced Question Design
+        const Text(
+          'What does this sentence mean?',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
           ),
         ),
-        const SizedBox(height: 24),
         
-        // Options
-        ...options.asMap().entries.map((entry) {
-          final index = entry.key;
-          final option = entry.value.toString();
-          
-          return Container(
-            width: double.infinity,
-            margin: const EdgeInsets.only(bottom: 12),
-            child: ElevatedButton(
-              onPressed: () => _handleAnswer(index),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: Colors.black87,
-                padding: const EdgeInsets.all(16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey[300]!),
+        const SizedBox(height: 32),
+        
+        // Audio sentence
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.volume_up,
+                  color: Colors.white,
+                  size: 24,
                 ),
               ),
-              child: Text(
-                option,
-                style: const TextStyle(fontSize: 16),
-                textAlign: TextAlign.left,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  question,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Enhanced Options Design
+        Expanded(
+          child: ListView.builder(
+            itemCount: options.length,
+            itemBuilder: (context, index) {
+              final option = options[index].toString();
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 0,
+                  child: InkWell(
+                    onTap: () => _handleAnswer(index),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        option,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ],
     );
   }
@@ -435,104 +580,155 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.lessonTitle),
-        backgroundColor: Colors.purple[600],
-        foregroundColor: Colors.white,
-        actions: [
-          // Hearts indicator
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                const Icon(Icons.favorite, color: Colors.red),
-                const SizedBox(width: 4),
-                Text(
-                  '$hearts',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Enhanced Top Bar
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Row(
+                children: [
+                  // Close button
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: const Icon(Icons.close, size: 24, color: Colors.grey),
                   ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : error != null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Lỗi: $error'),
-                      ElevatedButton(
-                        onPressed: _loadExercises,
-                        child: const Text('Thử lại'),
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Enhanced Progress bar
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ],
+                      child: exercises.isNotEmpty
+                          ? AnimatedBuilder(
+                              animation: _progressAnimation,
+                              builder: (context, child) {
+                                return FractionallySizedBox(
+                                  alignment: Alignment.centerLeft,
+                                  widthFactor: _progressAnimation.value,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: primaryColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                );
+                              },
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ),
-                )
-              : isLessonCompleted
-                  ? Center(
+                  
+                  const SizedBox(width: 16),
+                  
+                  // Enhanced Hearts indicator
+                  Row(
+                    children: List.generate(5, (index) {
+                      return Container(
+                        margin: const EdgeInsets.only(right: 4),
+                        child: Icon(
+                          index < hearts ? Icons.favorite : Icons.favorite_border,
+                          color: index < hearts ? Colors.red : Colors.grey.shade300,
+                          size: 20,
+                        ),
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Expanded(
+              child: isLoading
+                  ? const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.green, size: 64),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Lesson đã hoàn thành!',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Quay về Learnmap'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.purple[600],
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                            ),
-                          ),
+                          CircularProgressIndicator(color: primaryColor),
+                          SizedBox(height: 16),
+                          Text('Loading exercises...', style: TextStyle(color: Colors.grey)),
                         ],
                       ),
                     )
-                  : Column(
-                      children: [
-                        // Progress indicator
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          child: LinearProgressIndicator(
-                            value: (currentExerciseIndex + 1) / exercises.length,
-                            backgroundColor: Colors.grey[300],
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.purple[600]!),
+                  : error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              const SizedBox(height: 16),
+                              Text('Error: $error', textAlign: TextAlign.center),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: _loadExercises,
+                                style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                                child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
                           ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Câu hỏi ${currentExerciseIndex + 1}/${exercises.length}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 14,
+                        )
+                      : isLessonCompleted
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Container(
+                                    width: 120,
+                                    height: 120,
+                                    decoration: const BoxDecoration(
+                                      color: primaryColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.celebration,
+                                      color: Colors.white,
+                                      size: 60,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  const Text(
+                                    'Lesson Complete!',
+                                    style: TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 40),
+                                  SizedBox(
+                                    width: 200,
+                                    child: ElevatedButton.icon(
+                                      onPressed: () => Navigator.of(context).pop(),
+                                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                      label: const Text(
+                                        'Back to Map',
+                                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                      ),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: primaryColor,
+                                        padding: const EdgeInsets.symmetric(vertical: 16),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: _buildExerciseWidget(),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        // Exercise content
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: _buildExerciseWidget(),
-                          ),
-                        ),
-                      ],
-                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
-} 
+}

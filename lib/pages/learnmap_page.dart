@@ -12,23 +12,94 @@ class LearnmapPage extends StatefulWidget {
   State<LearnmapPage> createState() => _LearnmapPageState();
 }
 
-class _LearnmapPageState extends State<LearnmapPage> {
+class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMixin {
   String? selectedCourseId;
   List<Map<String, dynamic>> courses = [];
   bool isLoadingCourses = true;
   String? error;
   LearnmapController? controller;
+  late AnimationController _unlockAnimationController;
+  late AnimationController _startBubbleAnimationController; // New animation controller
+  late Animation<double> _startBubbleAnimation;
+  
+  // Scroll control
+  final ScrollController _scrollController = ScrollController();
+  bool _showBackToCurrentButton = false;
+  int? _currentLessonIndex;
+  int? _currentUnitIndex;
+
+  // Unit gradient colors matching app theme
+  final List<LinearGradient> unitGradients = [
+    const LinearGradient(
+      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)], // Coral red
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFF4ECDC4), Color(0xFF44A08D)], // Teal green
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    const LinearGradient(
+      colors: [Color(0xFF667eea), Color(0xFF764ba2)], // Blue purple
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+  ];
 
   @override
   void initState() {
     super.initState();
+    _unlockAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    // START! bubble animation controller
+    _startBubbleAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    
+    // Bounce animation for START! bubble
+    _startBubbleAnimation = Tween<double>(
+      begin: -15.0,
+      end: -20.0,
+    ).animate(CurvedAnimation(
+      parent: _startBubbleAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Start the bounce animation and repeat
+    _startBubbleAnimationController.repeat(reverse: true);
+    
+    // Scroll listener to show/hide back button
+    _scrollController.addListener(_onScroll);
+    
     _loadCourses();
   }
 
   @override
   void dispose() {
+    _unlockAnimationController.dispose();
+    _startBubbleAnimationController.dispose();
+    _scrollController.dispose();
     controller?.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    // Show back button when scrolled away from current lesson
+    if (_currentLessonIndex != null && _currentUnitIndex != null) {
+      final currentPosition = _scrollController.offset;
+      final shouldShow = currentPosition > 200; // Show after scrolling 200px
+      
+      if (shouldShow != _showBackToCurrentButton) {
+        setState(() {
+          _showBackToCurrentButton = shouldShow;
+        });
+      }
+    }
   }
 
   Future<void> _loadCourses() async {
@@ -48,32 +119,16 @@ class _LearnmapPageState extends State<LearnmapPage> {
     setState(() { isLoadingCourses = false; });
   }
 
-  Future<void> _testAuth() async {
-    final result = await LearnmapService.testAuthentication();
-    final isAuth = result != null;
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Auth test: ${isAuth ? "SUCCESS" : "FAILED"}'),
-          backgroundColor: isAuth ? Colors.green : Colors.red,
-        ),
-      );
-    }
-  }
-
   void _navigateToLesson(String unitId, String lessonId, String lessonStatus) {
     if (lessonStatus == 'locked') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Lesson này chưa được mở khóa!'),
+          content: Text('Complete previous lessons to unlock this one'),
           backgroundColor: Colors.orange,
         ),
       );
       return;
     }
-
-    print('🔄 Navigating to lesson: $lessonId (status: $lessonStatus)');
 
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -83,18 +138,14 @@ class _LearnmapPageState extends State<LearnmapPage> {
           lessonTitle: 'Lesson ${lessonId.substring(0, 8)}...',
           currentHearts: controller?.gamificationData?.hearts ?? 5,
           onHeartsChanged: (newHearts) {
-            print('🔄 Hearts changed: $newHearts');
             controller?.updateHearts(newHearts);
           },
           onLessonCompleted: (unitId, lessonId, status) {
-            print('🔄 Lesson completed: $lessonId -> $status');
             controller?.updateLessonProgress(unitId, lessonId, status);
           },
         ),
       ),
     ).then((_) {
-      // Refresh learnmap khi quay về
-      print('🔄 Returning from lesson, refreshing learnmap');
       if (controller != null && selectedCourseId != null) {
         controller!.loadLearnmap(selectedCourseId!);
       }
@@ -115,10 +166,13 @@ class _LearnmapPageState extends State<LearnmapPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+              const SizedBox(height: 16),
               Text('Error: $error'),
+              const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: _loadCourses,
-                child: const Text('Thử lại'),
+                child: const Text('Retry'),
               ),
             ],
           ),
@@ -128,575 +182,731 @@ class _LearnmapPageState extends State<LearnmapPage> {
     
     if (courses.isEmpty) {
       return const Scaffold(
-        body: Center(child: Text('Không có khóa học nào')),
+        body: Center(child: Text('No courses available')),
       );
     }
 
     return Scaffold(
-      body: Column(
-        children: [
-          // Top Bar với gamification elements (như ảnh)
-          Container(
-            padding: const EdgeInsets.fromLTRB(16, 40, 16, 16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.purple[600]!, Colors.purple[400]!],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Builder(
-              builder: (context) {
-                if (controller == null) {
-                  return Row(
-                    children: [
-                      // Language selector
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Icon(Icons.flag, color: Colors.blue, size: 16),
-                          ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'EN',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      // Default gamification stats
-                      Row(
-                        children: [
-                          const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '0',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[400],
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.diamond, color: Colors.white, size: 16),
-                          ),
-                          const SizedBox(width: 4),
-                          const Text(
-                            '0',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.star_border, color: Colors.yellow, size: 20),
-                        ],
-                      ),
-                    ],
-                  );
-                }
-                
-                return ListenableBuilder(
-                  listenable: controller!,
-                  builder: (context, child) {
-                    final gamificationData = controller!.gamificationData;
-                    return Row(
-                      children: [
-                        // Language selector
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.flag, color: Colors.blue, size: 16),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'EN',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        // Gamification stats
-                        Row(
-                          children: [
-                            // Streak
-                            Row(
-                              children: [
-                                const Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${gamificationData?.streak ?? 0}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            // XP/Currency
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue[400],
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.diamond, color: Colors.white, size: 16),
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${gamificationData?.xp ?? 0}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(width: 16),
-                            // Premium/Star
-                            Icon(
-                              gamificationData?.isPremium == true 
-                                ? Icons.star 
-                                : Icons.star_border,
-                              color: Colors.yellow,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-          
-          // Course selector
-          Container(
-            height: 60,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: courses.length,
-              itemBuilder: (context, idx) {
-                final course = courses[idx];
-                final isSelected = course['id'] == selectedCourseId;
-                return GestureDetector(
-                  onTap: () {
-                    setState(() { selectedCourseId = course['id']; });
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected ? Colors.purple[600] : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(20),
-                      border: isSelected ? Border.all(color: Colors.purple[800]!, width: 2) : null,
-                    ),
-                    child: Center(
-                      child: Text(
-                        course['title'] ?? '',
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : Colors.black87,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          
-          // Main learnmap content
-          if (selectedCourseId != null)
-            Expanded(
-              child: Builder(
-                builder: (context) {
-                  // Tạo controller nếu chưa có hoặc courseId thay đổi
-                  if (controller == null || controller!.courseId != selectedCourseId) {
-                    controller?.dispose();
-                    controller = LearnmapController();
-                    controller!.loadLearnmap(selectedCourseId!);
-                  }
-                  
-                  return ListenableBuilder(
-                    listenable: controller!,
-                    builder: (context, child) {
-                      if (controller!.isLoading) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Đang tải learnmap...'),
-                            ],
-                          ),
-                        );
-                      }
-                      
-                      if (controller!.isInitializing) {
-                        return const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(),
-                              SizedBox(height: 16),
-                              Text('Đang khởi tạo lộ trình học...'),
-                            ],
-                          ),
-                        );
-                      }
-                      
-                      if (controller!.error != null) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.error, size: 64, color: Colors.red[300]),
-                              const SizedBox(height: 16),
-                              Text('Lỗi: ${controller!.error}'),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: () => controller!.loadLearnmap(selectedCourseId!),
-                                child: const Text('Thử lại'),
-                              ),
-                            ],
-                          ),
-                        );
-                      }
-                      
-                      final learnmap = controller!.learnmap;
-                      if (learnmap == null) {
-                        return const Center(
-                          child: Text('Không có dữ liệu learnmap'),
-                        );
-                      }
-                      
-                      final units = learnmap['unitProgress'] as List<dynamic>? ?? [];
-                      final gamificationData = controller!.gamificationData;
-                      
-                      // Debug log
-                      print('🔍 [LearnmapPage] Units count: ${units.length}');
-                      for (int i = 0; i < units.length; i++) {
-                        final unit = units[i];
-                        final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
-                        print('  📚 Unit $i: ${lessons.length} lessons, status: ${unit['status']}');
-                      }
-                      
-                      return Column(
-                        children: [
-                          // Hearts indicator và refresh button
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                // Hearts
-                                Row(
-                                  children: [
-                                    const Icon(Icons.favorite, color: Colors.red),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '${gamificationData?.hearts ?? 5}',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                // Refresh button
-                                IconButton(
-                                  onPressed: () {
-                                    print('🔄 [LearnmapPage] Manual refresh triggered');
-                                    controller?.loadLearnmap(selectedCourseId!);
-                                  },
-                                  icon: const Icon(Icons.refresh, color: Colors.blue),
-                                ),
-                              ],
-                            ),
-                          ),
-                          
-                          // Learnmap content
-                          Expanded(
-                            child: ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: units.length,
-                              itemBuilder: (context, unitIdx) {
-                                final unit = units[unitIdx];
-                                final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
-                                final unitStatus = unit['status'] ?? 'locked';
-                                
-                                return _buildUnitSection(unitIdx, unit, lessons, unitStatus);
-                              },
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUnitSection(int unitIdx, Map<String, dynamic> unit, List<dynamic> lessons, String unitStatus) {
-    final gamificationData = controller?.gamificationData;
-    final completedLessons = lessons.where((l) => l['status'] == 'completed').length;
-    final totalLessons = lessons.length;
-    final trophyCount = completedLessons == totalLessons && totalLessons > 0 ? 1 : 0;
-    
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Unit header với trophy
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: _getUnitColor(unitIdx),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Unit ${unitIdx + 1}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        '$completedLessons/$totalLessons lessons',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Trophy icon với count
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.emoji_events,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      if (trophyCount > 0) ...[
-                        const SizedBox(width: 4),
-                        Text(
-                          '$trophyCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          
-          // Lessons path
-          if (lessons.isNotEmpty)
-            ...lessons.asMap().entries.map((entry) {
-              final lessonIdx = entry.key;
-              final lesson = entry.value;
-              final lessonStatus = lesson['status'] ?? 'locked';
-              final isLast = lessonIdx == lessons.length - 1;
-              
-              return _buildLessonNode(
-                lessonIdx,
-                lesson,
-                lessonStatus,
-                isLast,
-                unitIdx,
-              );
-            }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLessonNode(int lessonIdx, Map<String, dynamic> lesson, String status, bool isLast, int unitIdx) {
-    final lessonId = lesson['lessonId'] as String;
-    
-    // Lấy unitId từ learnmap data
-    String unitId;
-    if (controller?.learnmap != null) {
-      final units = controller!.learnmap!['unitProgress'] as List<dynamic>? ?? [];
-      if (unitIdx < units.length) {
-        unitId = units[unitIdx]['unitId'] as String;
-      } else {
-        unitId = 'unit_$unitIdx'; // Fallback
-      }
-    } else {
-      unitId = 'unit_$unitIdx'; // Fallback
-    }
-    
-    return GestureDetector(
-      onTap: () => _navigateToLesson(unitId, lessonId, status),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        child: Row(
+      backgroundColor: const Color(0xFFF8F9FA),
+      body: SafeArea(
+        child: Column(
           children: [
-            // Lesson node
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: _getLessonColor(status),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 3,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                _getLessonIcon(status),
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            
-            // Connection line
-            if (!isLast)
-              Expanded(
-                child: Container(
-                  height: 2,
-                  color: Colors.grey[300],
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                ),
-              ),
-            
-            // Lesson info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Lesson ${lessonIdx + 1}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    'Trạng thái: $status',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _buildTopBar(),
+            _buildCourseSelector(),
+            if (selectedCourseId != null)
+              Expanded(child: _buildLearnmapContent()),
           ],
         ),
       ),
     );
   }
 
-  Color _getUnitColor(int unitIdx) {
-    final colors = [
-      Colors.red[600]!,
-      Colors.green[600]!,
-      Colors.blue[600]!,
-      Colors.orange[600]!,
-      Colors.purple[600]!,
-    ];
-    return colors[unitIdx % colors.length];
+  Widget _buildTopBar() {
+    final gamificationData = controller?.gamificationData;
+    
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Language selector
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(2),
+                    color: Colors.blue.shade600,
+                  ),
+                  child: const Center(
+                    child: Text('🇺🇸', style: TextStyle(fontSize: 10)),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'EN',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Stats row
+          Row(
+            children: [
+              // Streak
+              _buildStatItem(
+                icon: Icons.local_fire_department,
+                iconColor: Colors.orange,
+                value: '4',
+              ),
+              const SizedBox(width: 20),
+              
+              // XP/Gems
+              _buildStatItem(
+                icon: Icons.diamond,
+                iconColor: Colors.cyan,
+                value: '957',
+              ),
+              const SizedBox(width: 20),
+              
+              // Hearts (real data)
+              _buildStatItem(
+                icon: Icons.favorite,
+                iconColor: Colors.red,
+                value: '${gamificationData?.hearts ?? 5}',
+              ),
+              const SizedBox(width: 20),
+              
+              // Premium star
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.amber,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.star,
+                  color: Colors.white,
+                  size: 18,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: iconColor, size: 18),
+        const SizedBox(width: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCourseSelector() {
+    return Container(
+      height: 70,
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: courses.length,
+        itemBuilder: (context, index) {
+          final course = courses[index];
+          final isSelected = course['id'] == selectedCourseId;
+          
+          return Container(
+            margin: const EdgeInsets.only(right: 12),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  selectedCourseId = course['id'];
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(25),
+                  border: isSelected ? null : Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                ),
+                child: Text(
+                  course['title'] ?? 'Unknown Course',
+                  style: TextStyle(
+                    color: isSelected ? const Color(0xFF667eea) : Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildLearnmapContent() {
+    // Initialize controller if needed
+    if (controller == null || controller!.courseId != selectedCourseId) {
+      controller?.dispose();
+      controller = LearnmapController();
+      controller!.loadLearnmap(selectedCourseId!);
+    }
+    
+    return Stack(
+      children: [
+        ListenableBuilder(
+          listenable: controller!,
+          builder: (context, child) {
+            if (controller!.isLoading || controller!.isInitializing) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667eea)),
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      'Loading your learning path...',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            if (controller!.error != null) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+                    const SizedBox(height: 16),
+                    Text('Error: ${controller!.error}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => controller!.loadLearnmap(selectedCourseId!),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            final learnmap = controller!.learnmap;
+            if (learnmap == null) {
+              return const Center(
+                child: Text('No learning path data available'),
+              );
+            }
+            
+            final units = learnmap['unitProgress'] as List<dynamic>? ?? [];
+            
+            // Find current lesson position for auto-scroll
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _findAndScrollToCurrentLesson(units);
+            });
+            
+            return ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: units.length,
+              itemBuilder: (context, unitIndex) {
+                final unit = units[unitIndex];
+                final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+                
+                return Column(
+                  children: [
+                    _buildUnitHeader(unit, unitIndex + 1),
+                    const SizedBox(height: 30),
+                    _buildPerfectZigzagPath(lessons, unitIndex),
+                    const SizedBox(height: 40),
+                  ],
+                );
+              },
+            );
+          },
+        ),
+        
+        // Floating back to current button
+        if (_showBackToCurrentButton)
+          Positioned(
+            bottom: 20,
+            right: 20,
+            child: FloatingActionButton(
+              onPressed: _scrollToCurrentLesson,
+              backgroundColor: const Color(0xFF667eea),
+              child: const Icon(
+                Icons.my_location,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _findAndScrollToCurrentLesson(List<dynamic> units) {
+    for (int unitIndex = 0; unitIndex < units.length; unitIndex++) {
+      final lessons = units[unitIndex]['lessonProgress'] as List<dynamic>? ?? [];
+      for (int lessonIndex = 0; lessonIndex < lessons.length; lessonIndex++) {
+        final lesson = lessons[lessonIndex];
+        final status = lesson['status'] ?? 'locked';
+        
+        if (status == 'unlocked' || status == 'in_progress') {
+          _currentUnitIndex = unitIndex;
+          _currentLessonIndex = lessonIndex;
+          
+          // Auto scroll to current lesson on first load
+          if (_scrollController.hasClients) {
+            final targetOffset = _calculateScrollOffset(unitIndex, lessonIndex);
+            _scrollController.animateTo(
+              targetOffset,
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeInOut,
+            );
+          }
+          return;
+        }
+      }
+    }
+  }
+
+  void _scrollToCurrentLesson() {
+    if (_currentUnitIndex != null && _currentLessonIndex != null && _scrollController.hasClients) {
+      final targetOffset = _calculateScrollOffset(_currentUnitIndex!, _currentLessonIndex!);
+      _scrollController.animateTo(
+        targetOffset,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOut,
+      );
+    }
+  }
+
+  double _calculateScrollOffset(int unitIndex, int lessonIndex) {
+    // Calculate approximate scroll position based on unit and lesson index
+    const double unitHeaderHeight = 100.0;
+    const double unitSpacing = 70.0;
+    const double lessonNodeHeight = 120.0;
+    const double lessonSpacing = 50.0;
+    
+    double offset = 16.0; // Initial padding
+    
+    // Add height for previous units
+    for (int i = 0; i < unitIndex; i++) {
+      offset += unitHeaderHeight + unitSpacing;
+      // Add approximate height for lessons in previous units (assume 4 lessons per unit)
+      offset += (4 * lessonNodeHeight) + (3 * lessonSpacing) + 40.0; // Unit bottom margin
+    }
+    
+    // Add height for current unit header
+    offset += unitHeaderHeight + 30.0; // Unit header + spacing
+    
+    // Add height for lessons before current lesson
+    offset += lessonIndex * (lessonNodeHeight + lessonSpacing);
+    
+    // Center the current lesson in view
+    offset -= 200.0; // Offset to center in viewport
+    
+    return offset.clamp(0.0, _scrollController.position.maxScrollExtent);
+  }
+
+  Widget _buildUnitHeader(Map<String, dynamic> unit, int unitNumber) {
+    final gradient = unitGradients[(unitNumber - 1) % unitGradients.length];
+    final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+    final completedLessons = lessons.where((l) => l['status'] == 'completed').length;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.colors.first.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Trophy with unit number
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(
+                  Icons.emoji_events,
+                  color: Colors.white,
+                  size: 24,
+                ),
+                Positioned(
+                  bottom: 6,
+                  child: Text(
+                    '$unitNumber',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(width: 16),
+          
+          // Unit info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  unit['title'] ?? 'Unit $unitNumber',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$completedLessons/${lessons.length} lessons',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Progress circle
+          if (lessons.isNotEmpty)
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: CircularProgressIndicator(
+                value: completedLessons / lessons.length,
+                backgroundColor: Colors.white.withOpacity(0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 3,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPerfectZigzagPath(List<dynamic> lessons, int unitIndex) {
+    const double nodeSize = 120.0; // Increased more to accommodate START! bubble
+    const double verticalSpacing = 40.0;
+    
+    return Container(
+      width: double.infinity,
+      child: Column(
+        children: List.generate(lessons.length, (index) {
+          final lesson = lessons[index];
+          final status = lesson['status'] ?? 'locked';
+          final isCurrentLesson = status == 'unlocked' || status == 'in_progress';
+          
+          // True "dích dắc" pattern: alternating left-right
+          final isLeftSide = index % 2 == 0;
+          final isLast = index == lessons.length - 1;
+          
+          return Column(
+            children: [
+              // Lesson node row with proper spacing
+              SizedBox(
+                height: nodeSize,
+                child: Stack(
+                  clipBehavior: Clip.none, // Allow overflow for START! bubble
+                  children: [
+                    // Lesson node positioned
+                    Positioned(
+                      left: isLeftSide ? 40 : null,
+                      right: isLeftSide ? null : 40,
+                      top: 20, // Add top padding for START! bubble
+                      child: _buildLessonNode(
+                        lesson, 
+                        status, 
+                        isCurrentLesson, 
+                        unitIndex, 
+                        index + 1
+                      ),
+                    ),
+                    
+                    // Lesson number overlay - positioned below node
+                    Positioned(
+                      left: isLeftSide ? 75 : null, // Centered on node
+                      right: isLeftSide ? null : 75,
+                      bottom: 15, // Position at bottom with some margin
+                      child: Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(
+                            color: _getLessonColor(status), 
+                            width: 2.5
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${index + 1}',
+                            style: TextStyle(
+                              color: _getLessonColor(status),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Connection path
+              if (!isLast)
+                _buildZigzagConnectionPath(isLeftSide, index + 1 < lessons.length),
+            ],
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildLessonNode(Map<String, dynamic> lesson, String status, bool isCurrentLesson, int unitIndex, int lessonNumber) {
+    final lessonId = lesson['lessonId'] as String;
+    
+    // Get unitId from learnmap data
+    String unitId;
+    if (controller?.learnmap != null) {
+      final units = controller!.learnmap!['unitProgress'] as List<dynamic>? ?? [];
+      if (unitIndex < units.length) {
+        unitId = units[unitIndex]['unitId'] as String;
+      } else {
+        unitId = 'unit_$unitIndex';
+      }
+    } else {
+      unitId = 'unit_$unitIndex';
+    }
+    
+    return GestureDetector(
+      onTap: () => _navigateToLesson(unitId, lessonId, status),
+      child: Container(
+        width: 90, // Keep larger size
+        height: 90, // Keep larger size
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none, // Allow START! bubble to overflow
+          children: [
+            // Main circle (larger)
+            Container(
+              width: 80, // Increased from 70
+              height: 80, // Increased from 70
+              decoration: BoxDecoration(
+                gradient: _getLessonGradient(status),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _getLessonColor(status).withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.white,
+                  width: 4, // Thicker border
+                ),
+              ),
+              child: Icon(
+                _getLessonIcon(status),
+                color: Colors.white,
+                size: status == 'locked' ? 28 : 32, // Larger icons
+              ),
+            ),
+            
+            // START! bubble for current lesson - positioned above node with animation
+            if (isCurrentLesson)
+              AnimatedBuilder(
+                animation: _startBubbleAnimation,
+                builder: (context, child) {
+                  return Positioned(
+                    top: _startBubbleAnimation.value, // Animated position
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(color: _getLessonColor(status), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'START!',
+                        style: TextStyle(
+                          color: _getLessonColor(status),
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildZigzagConnectionPath(bool currentIsLeft, bool hasNext) {
+    const double verticalSpacing = 50.0;
+    
+    if (!hasNext) return const SizedBox.shrink();
+    
+    // Next lesson will be on opposite side
+    final nextIsLeft = !currentIsLeft;
+    const double nodeOffset = 85.0; // Adjusted for better centering
+    
+    return Container(
+      height: verticalSpacing,
+      width: double.infinity,
+      child: Stack(
+        children: [
+          // Vertical line down from current node
+          Positioned(
+            left: currentIsLeft ? nodeOffset : null,
+            right: currentIsLeft ? null : nodeOffset,
+            top: 0,
+            child: Container(
+              width: 2,
+              height: verticalSpacing * 0.4,
+              color: Colors.grey.shade300,
+            ),
+          ),
+          
+          // Horizontal line connecting both sides
+          Positioned(
+            top: verticalSpacing * 0.4,
+            left: nodeOffset,
+            right: nodeOffset,
+            child: Container(
+              height: 2,
+              color: Colors.grey.shade300,
+            ),
+          ),
+          
+          // Vertical line up to next node
+          Positioned(
+            left: nextIsLeft ? nodeOffset : null,
+            right: nextIsLeft ? null : nodeOffset,
+            top: verticalSpacing * 0.4,
+            child: Container(
+              width: 2,
+              height: verticalSpacing * 0.6,
+              color: Colors.grey.shade300,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  LinearGradient _getLessonGradient(String status) {
+    switch (status) {
+      case 'completed':
+        return const LinearGradient(
+          colors: [Color(0xFFFFD700), Color(0xFFFFA500)], // Gold gradient
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      case 'unlocked':
+      case 'in_progress':
+        return const LinearGradient(
+          colors: [Color(0xFF667eea), Color(0xFF764ba2)], // Purple gradient
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+      default:
+        return LinearGradient(
+          colors: [Colors.grey.shade400, Colors.grey.shade500], // Grey gradient
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        );
+    }
   }
 
   Color _getLessonColor(String status) {
     switch (status) {
-      case 'locked':
-        return Colors.grey[400]!;
-      case 'unlocked':
-        return Colors.blue[400]!;
-      case 'in_progress':
-        return Colors.orange[400]!;
       case 'completed':
-        return Colors.green[400]!;
+        return const Color(0xFFFFD700);
+      case 'unlocked':
+      case 'in_progress':
+        return const Color(0xFF667eea);
       default:
-        return Colors.grey[400]!;
+        return Colors.grey.shade400;
     }
   }
 
   IconData _getLessonIcon(String status) {
     switch (status) {
-      case 'locked':
-        return Icons.lock;
-      case 'unlocked':
-        return Icons.lock_open;
-      case 'in_progress':
-        return Icons.play_circle_outline;
       case 'completed':
-        return Icons.check_circle;
+        return Icons.check;
+      case 'unlocked':
+      case 'in_progress':
+        return Icons.play_arrow;
       default:
         return Icons.lock;
     }
   }
-} 
+}
