@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:math' as math;
 import '../controllers/learnmap_controller.dart';
 import '../network/course_service.dart';
 import '../network/learnmap_service.dart';
 import '../theme/app_themes.dart';
+import '../widgets/snake_path_layout.dart'; // Import new component
 import 'lesson_detail_page.dart';
 
 class LearnmapPage extends StatefulWidget {
@@ -20,7 +22,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   String? error;
   LearnmapController? controller;
   late AnimationController _unlockAnimationController;
-  late AnimationController _startBubbleAnimationController; // New animation controller
+  late AnimationController _startBubbleAnimationController;
   late Animation<double> _startBubbleAnimation;
   
   // Scroll control
@@ -28,6 +30,9 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   bool _showBackToCurrentButton = false;
   int? _currentLessonIndex;
   int? _currentUnitIndex;
+
+  // Course selector dropdown
+  bool _showCourseDropdown = false;
 
   // Unit gradient colors matching app theme
   final List<LinearGradient> unitGradients = [
@@ -112,7 +117,15 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       final data = await CourseService.getAllCourses();
       setState(() {
         courses = data ?? [];
-        if (courses.isNotEmpty) selectedCourseId = courses[0]['id'];
+        if (courses.isNotEmpty) {
+          // Tìm course "English for Beginners" hoặc course thứ 3
+          final targetCourse = courses.firstWhere(
+            (course) => course['id'] == '687e0d13368265caaba5570c',
+            orElse: () => courses.length >= 3 ? courses[2] : courses[0],
+          );
+          selectedCourseId = targetCourse['id'];
+          print('🎯 Selected course: ${targetCourse['title']} (ID: $selectedCourseId)');
+        }
       });
     } catch (e) {
       setState(() { error = e.toString(); });
@@ -189,184 +202,61 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
 
     return Scaffold(
       backgroundColor: AppThemes.lightGroupedBackground,
+      appBar: AppBar(
+        backgroundColor: AppThemes.lightSecondaryBackground,
+        title: const Text(
+          'Học tiếng Anh',
+          style: TextStyle(color: AppThemes.lightLabel),
+        ),
+        actions: [
+          // Course selector dropdown
+          PopupMenuButton<String>(
+            icon: Icon(Icons.school, color: AppThemes.primaryGreen),
+            onSelected: (courseId) {
+              setState(() {
+                selectedCourseId = courseId;
+              });
+            },
+            itemBuilder: (context) => courses.map((course) {
+              return PopupMenuItem<String>(
+                value: course['id'],
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.check,
+                      color: course['id'] == selectedCourseId 
+                          ? AppThemes.primaryGreen 
+                          : Colors.transparent,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        course['title'] ?? 'Unknown Course',
+                        style: TextStyle(
+                          color: course['id'] == selectedCourseId 
+                              ? AppThemes.primaryGreen 
+                              : AppThemes.lightLabel,
+                          fontWeight: course['id'] == selectedCourseId 
+                              ? FontWeight.bold 
+                              : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildTopBar(),
-            _buildCourseSelector(),
             if (selectedCourseId != null)
               Expanded(child: _buildLearnmapContent()),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    final gamificationData = controller?.gamificationData;
-    
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Language selector
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 20,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(2),
-                    color: AppThemes.systemBlue,
-                  ),
-                  child: const Center(
-                    child: Text('🇺🇸', style: TextStyle(fontSize: 10)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'EN',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Stats row
-          Row(
-            children: [
-              // Streak
-              _buildStatItem(
-                icon: Icons.local_fire_department,
-                iconColor: AppThemes.streak,
-                value: '4',
-              ),
-              const SizedBox(width: 20),
-              
-              // XP/Gems
-              _buildStatItem(
-                icon: Icons.diamond,
-                iconColor: AppThemes.xp,
-                value: '957',
-              ),
-              const SizedBox(width: 20),
-              
-              // Hearts (real data)
-              _buildStatItem(
-                icon: Icons.favorite,
-                iconColor: AppThemes.hearts,
-                value: '${gamificationData?.hearts ?? 5}',
-              ),
-              const SizedBox(width: 20),
-              
-              // Premium star
-              Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: AppThemes.premium,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.star,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, color: iconColor, size: 18),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCourseSelector() {
-    return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: courses.length,
-        itemBuilder: (context, index) {
-          final course = courses[index];
-          final isSelected = course['id'] == selectedCourseId;
-          
-          return Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  selectedCourseId = course['id'];
-                });
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                decoration: BoxDecoration(
-                  color: isSelected ? Colors.white : Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(25),
-                  border: isSelected ? null : Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                  ),
-                ),
-                child: Text(
-                  course['title'] ?? 'Unknown Course',
-                  style: TextStyle(
-                    color: isSelected ? AppThemes.primaryGreen : Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -379,98 +269,152 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       controller!.loadLearnmap(selectedCourseId!);
     }
     
-    return Stack(
-      children: [
-        ListenableBuilder(
-          listenable: controller!,
-          builder: (context, child) {
-            if (controller!.isLoading || controller!.isInitializing) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(AppThemes.primaryGreen),
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      'Loading your learning path...',
-                      style: TextStyle(color: AppThemes.lightSecondaryLabel),
-                    ),
-                  ],
+    return ListenableBuilder(
+      listenable: controller!,
+      builder: (context, child) {
+        if (controller!.isLoading || controller!.isInitializing) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(AppThemes.primaryGreen),
                 ),
-              );
-            }
-            
-            if (controller!.error != null) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline, size: 64, color: AppThemes.lightSecondaryLabel),
-                    const SizedBox(height: 16),
-                    Text('Error: ${controller!.error}'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () => controller!.loadLearnmap(selectedCourseId!),
-                      child: const Text('Retry'),
-                    ),
-                  ],
+                SizedBox(height: 16),
+                Text(
+                  'Loading your learning path...',
+                  style: TextStyle(color: AppThemes.lightSecondaryLabel),
                 ),
-              );
-            }
-            
-            final learnmap = controller!.learnmap;
-            if (learnmap == null) {
-              return const Center(
-                child: Text('No learning path data available'),
-              );
-            }
-            
-            final units = learnmap['unitProgress'] as List<dynamic>? ?? [];
-            
-            // Find current lesson position for auto-scroll
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _findAndScrollToCurrentLesson(units);
-            });
-            
-            return ListView.builder(
+              ],
+            ),
+          );
+        }
+        
+        if (controller!.error != null) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 64, color: AppThemes.lightSecondaryLabel),
+                const SizedBox(height: 16),
+                Text('Error: ${controller!.error}'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => controller!.loadLearnmap(selectedCourseId!),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        final learnmap = controller!.learnmap;
+        if (learnmap == null) {
+          return const Center(
+            child: Text('No learning path data available'),
+          );
+        }
+        
+        final units = learnmap['unitProgress'] as List<dynamic>? ?? [];
+        
+        // Find current lesson position for auto-scroll
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _findAndScrollToCurrentLesson(units);
+        });
+        
+        return Stack(
+          children: [
+            // Main content with sticky header
+            CustomScrollView(
               controller: _scrollController,
               physics: const ClampingScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              itemCount: units.length,
-              itemBuilder: (context, unitIndex) {
-                final unit = units[unitIndex];
-                final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+              slivers: [
+                // Sticky unit header
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickyUnitHeaderDelegate(
+                    units: units,
+                    scrollController: _scrollController,
+                  ),
+                ),
                 
-                return Column(
-                  children: [
-                    _buildUnitHeader(unit, unitIndex + 1),
-                    const SizedBox(height: 30),
-                    _buildPerfectZigzagPath(lessons, unitIndex),
-                    const SizedBox(height: 40),
-                  ],
-                );
-              },
-            );
-          },
-        ),
-        
-        // Floating back to current button
-        if (_showBackToCurrentButton)
-          Positioned(
-            bottom: 20,
-            right: 20,
-            child: FloatingActionButton(
-              onPressed: _scrollToCurrentLesson,
-              backgroundColor: AppThemes.primaryGreen,
-              child: const Icon(
-                Icons.my_location,
-                color: Colors.white,
-              ),
+                // Main snake path content
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, unitIndex) {
+                        final unit = units[unitIndex];
+                        final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+                        final unitId = unit['unitId'] as String;
+                        
+                        // Get previous unit's last lesson position for smooth connection
+                        Offset? previousUnitLastPosition;
+                        if (unitIndex > 0) {
+                          final prevUnit = units[unitIndex - 1];
+                          final prevLessons = prevUnit['lessonProgress'] as List<dynamic>? ?? [];
+                          if (prevLessons.isNotEmpty) {
+                            final screenWidth = MediaQuery.of(context).size.width;
+                            final centerX = screenWidth / 2;
+                            
+                            // Calculate previous unit's last lesson position
+                            final prevPositions = _calculateSnakePositions(
+                              prevLessons.length, 
+                              centerX, 
+                              unitIndex - 1, 
+                              null
+                            );
+                            if (prevPositions.isNotEmpty) {
+                              previousUnitLastPosition = prevPositions.last;
+                            }
+                          }
+                        }
+                        
+                        return Column(
+                          children: [
+                            const SizedBox(height: 30), // Space for sticky header
+                            
+                            // Snake path layout for this unit
+                            SnakePathLayout(
+                              lessons: lessons,
+                              unitIndex: unitIndex,
+                              unitId: unitId,
+                              onLessonTap: _navigateToLesson,
+                              previousUnitLastPosition: previousUnitLastPosition,
+                            ),
+                            
+                            const SizedBox(height: 40),
+                            
+                            // Unit connector (except for last unit)
+                            if (unitIndex < units.length - 1)
+                              _buildUnitConnector(units[unitIndex + 1], unitIndex + 2),
+                          ],
+                        );
+                      },
+                      childCount: units.length,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-      ],
+            
+            // Floating back to current button
+            if (_showBackToCurrentButton)
+              Positioned(
+                bottom: 20,
+                right: 20,
+                child: FloatingActionButton(
+                  onPressed: _scrollToCurrentLesson,
+                  backgroundColor: AppThemes.primaryGreen,
+                  child: const Icon(
+                    Icons.my_location,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -484,16 +428,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
         if (status == 'unlocked' || status == 'in_progress') {
           _currentUnitIndex = unitIndex;
           _currentLessonIndex = lessonIndex;
-          
-          // Auto scroll to current lesson on first load
-          if (_scrollController.hasClients) {
-            final targetOffset = _calculateScrollOffset(unitIndex, lessonIndex);
-            _scrollController.animateTo(
-              targetOffset,
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeInOut,
-            );
-          }
+          // Save current position but don't auto scroll
           return;
         }
       }
@@ -511,404 +446,333 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
     }
   }
 
+  // Helper method to calculate snake positions
+  List<Offset> _calculateSnakePositions(int lessonCount, double centerX, int unitIndex, Offset? previousLastPosition) {
+    List<Offset> positions = [];
+    
+    // Snake parameters
+    const double verticalSpacing = 120.0;
+    const double amplitude = 80.0;
+    const double nodeRadius = 40.0;
+    
+    // Determine snake direction based on unit index
+    bool curveLeftFirst = unitIndex % 2 == 0;
+    
+    for (int i = 0; i < lessonCount; i++) {
+      double y = (i * verticalSpacing) + 60;
+      
+      double frequency = (lessonCount > 6) ? 1.2 : 1.0;
+      double phase = (i / (lessonCount - 1)) * math.pi * frequency;
+      
+      double direction = curveLeftFirst ? 1.0 : -1.0;
+      double x = centerX + (amplitude * math.sin(phase) * direction);
+      
+      // Special handling for first lesson to connect with previous unit
+      if (i == 0 && previousLastPosition != null) {
+        final targetX = previousLastPosition.dx;
+        x = (targetX * 0.4) + (x * 0.6);
+      }
+      
+      x = x.clamp(nodeRadius + 20, centerX * 2 - nodeRadius - 20);
+      positions.add(Offset(x, y));
+    }
+    
+    return positions;
+  }
+
   double _calculateScrollOffset(int unitIndex, int lessonIndex) {
-    // Calculate approximate scroll position based on unit and lesson index
+    // Calculate approximate scroll position for snake path
     const double unitHeaderHeight = 100.0;
     const double unitSpacing = 70.0;
-    const double lessonNodeHeight = 120.0;
-    const double lessonSpacing = 50.0;
+    const double lessonVerticalSpacing = 120.0;
     
     double offset = 16.0; // Initial padding
     
     // Add height for previous units
     for (int i = 0; i < unitIndex; i++) {
       offset += unitHeaderHeight + unitSpacing;
-      // Add approximate height for lessons in previous units (assume 4 lessons per unit)
-      offset += (4 * lessonNodeHeight) + (3 * lessonSpacing) + 40.0; // Unit bottom margin
+      // Calculate height for snake path (depends on lesson count)
+      final prevUnit = controller?.learnmap?['unitProgress'][i];
+      final prevLessons = prevUnit?['lessonProgress'] as List<dynamic>? ?? [];
+      offset += (prevLessons.length * lessonVerticalSpacing) + 120.0; // Snake path height + bottom margin
     }
     
     // Add height for current unit header
-    offset += unitHeaderHeight + 30.0; // Unit header + spacing
+    offset += unitHeaderHeight + 30.0;
     
-    // Add height for lessons before current lesson
-    offset += lessonIndex * (lessonNodeHeight + lessonSpacing);
+    // Add height for lessons before current lesson in snake path
+    offset += lessonIndex * lessonVerticalSpacing;
     
     // Center the current lesson in view
-    offset -= 200.0; // Offset to center in viewport
+    offset -= 200.0;
     
     return offset.clamp(0.0, _scrollController.position.maxScrollExtent);
   }
 
-  Widget _buildUnitHeader(Map<String, dynamic> unit, int unitNumber) {
-    final gradient = unitGradients[(unitNumber - 1) % unitGradients.length];
-    final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
-    final completedLessons = lessons.where((l) => l['status'] == 'completed').length;
-    
+  Widget _buildUnitConnector(Map<String, dynamic> nextUnit, int unitNumber) {
     return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.colors.first.withOpacity(0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
+      margin: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
         children: [
-          // Trophy with unit number
+          // Flowing connection line
           Container(
-            width: 50,
-            height: 50,
+            height: 4,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                const Icon(
-                  Icons.emoji_events,
-                  color: Colors.white,
-                  size: 24,
-                ),
-                Positioned(
-                  bottom: 6,
-                  child: Text(
-                    '$unitNumber',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+              gradient: LinearGradient(
+                colors: [
+                  AppThemes.systemGray3,
+                  AppThemes.primaryGreen,
+                  AppThemes.systemGray3,
+                ],
+                stops: const [0.0, 0.5, 1.0],
+              ),
+              borderRadius: BorderRadius.circular(2),
             ),
           ),
           
-          const SizedBox(width: 16),
+          const SizedBox(height: 12),
           
-          // Unit info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  unit['title'] ?? 'Unit $unitNumber',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$completedLessons/${lessons.length} lessons',
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 14,
-                  ),
+          // Unit title in center
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            decoration: BoxDecoration(
+              color: AppThemes.lightBackground,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: AppThemes.primaryGreen.withOpacity(0.3),
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppThemes.primaryGreen.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-          ),
-          
-          // Progress circle
-          if (lessons.isNotEmpty)
-            SizedBox(
-              width: 40,
-              height: 40,
-              child: CircularProgressIndicator(
-                value: completedLessons / lessons.length,
-                backgroundColor: Colors.white.withOpacity(0.3),
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 3,
+            child: Text(
+              nextUnit['title'] ?? 'Unit $unitNumber',
+              style: TextStyle(
+                color: AppThemes.primaryGreen,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
             ),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildPerfectZigzagPath(List<dynamic> lessons, int unitIndex) {
-    const double nodeSize = 120.0; // Increased more to accommodate START! bubble
-    const double verticalSpacing = 40.0;
-    
+// Sticky Unit Header Delegate
+class _StickyUnitHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final List<dynamic> units;
+  final ScrollController scrollController;
+  
+  _StickyUnitHeaderDelegate({
+    required this.units,
+    required this.scrollController,
+  });
+
+  @override
+  double get minExtent => 95.0;
+
+  @override
+  double get maxExtent => 95.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
-      width: double.infinity,
-      child: Column(
-        children: List.generate(lessons.length, (index) {
-          final lesson = lessons[index];
-          final status = lesson['status'] ?? 'locked';
-          final isCurrentLesson = status == 'unlocked' || status == 'in_progress';
-          
-          // True "dích dắc" pattern: alternating left-right
-          final isLeftSide = index % 2 == 0;
-          final isLast = index == lessons.length - 1;
-          
-          return Column(
+      color: AppThemes.lightGroupedBackground,
+      child: _StickyUnitHeaderWidget(
+        units: units,
+        scrollController: scrollController,
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {
+    return true;
+  }
+}
+
+// Sticky Unit Header Widget
+class _StickyUnitHeaderWidget extends StatefulWidget {
+  final List<dynamic> units;
+  final ScrollController scrollController;
+  
+  const _StickyUnitHeaderWidget({
+    required this.units,
+    required this.scrollController,
+  });
+
+  @override
+  State<_StickyUnitHeaderWidget> createState() => _StickyUnitHeaderWidgetState();
+}
+
+class _StickyUnitHeaderWidgetState extends State<_StickyUnitHeaderWidget> {
+  int currentUnitIndex = 0;
+  
+  @override
+  void initState() {
+    super.initState();
+    widget.scrollController.addListener(_onScroll);
+  }
+  
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    super.dispose();
+  }
+  
+  void _onScroll() {
+    if (!widget.scrollController.hasClients) return;
+    
+    final scrollOffset = widget.scrollController.offset;
+    final newUnitIndex = _calculateCurrentUnitIndex(scrollOffset);
+    
+    if (newUnitIndex != currentUnitIndex) {
+      setState(() {
+        currentUnitIndex = newUnitIndex;
+      });
+    }
+  }
+  
+  int _calculateCurrentUnitIndex(double scrollOffset) {
+    // Calculate which unit is currently visible based on scroll position
+    const double stickyHeaderHeight = 80.0;
+    const double unitSpacing = 70.0;
+    const double lessonVerticalSpacing = 120.0;
+    const double unitConnectorHeight = 80.0;
+    
+    double accumulatedHeight = 0.0;
+    
+    for (int i = 0; i < widget.units.length; i++) {
+      final lessons = widget.units[i]['lessonProgress'] as List<dynamic>? ?? [];
+      
+      // Calculate height for this unit's snake path
+      double unitHeight = unitSpacing + (lessons.length * lessonVerticalSpacing) + 120.0; // Snake path height + margin
+      
+      // Add unit connector height (except for last unit)
+      if (i < widget.units.length - 1) {
+        unitHeight += unitConnectorHeight;
+      }
+      
+      // Check if current scroll position is within this unit
+      if (scrollOffset < accumulatedHeight + unitHeight) {
+        return i;
+      }
+      
+      accumulatedHeight += unitHeight;
+    }
+    
+    // If scrolled past all units, return the last unit
+    return widget.units.length - 1;
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (widget.units.isEmpty || currentUnitIndex >= widget.units.length) {
+      return Container(
+        height: 80,
+        color: AppThemes.lightGroupedBackground,
+      );
+    }
+    
+    final unit = widget.units[currentUnitIndex];
+    final unitNumber = currentUnitIndex + 1;
+    final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+    final completedLessons = lessons.where((l) => l['status'] == 'completed').length;
+    
+    // Unit colors matching app theme
+    final List<Color> unitColors = [
+      AppThemes.primaryGreen, // Unit 1
+      AppThemes.systemBlue,   // Unit 2
+      AppThemes.systemOrange, // Unit 3
+    ];
+    
+    final color = unitColors[(unitNumber - 1) % unitColors.length];
+    
+    return Stack(
+      children: [
+        // Bottom shadow block
+        Positioned(
+          bottom: -4,
+          left: 20,
+          right: 20,
+          child: Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        
+        // Main box
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
             children: [
-              // Lesson node row with proper spacing
-              SizedBox(
-                height: nodeSize,
-                child: Stack(
-                  clipBehavior: Clip.none, // Allow overflow for START! bubble
+              // Unit info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Lesson node positioned
-                    Positioned(
-                      left: isLeftSide ? 40 : null,
-                      right: isLeftSide ? null : 40,
-                      top: 20, // Add top padding for START! bubble
-                      child: _buildLessonNode(
-                        lesson, 
-                        status, 
-                        isCurrentLesson, 
-                        unitIndex, 
-                        index + 1
+                    Text(
+                      'SECTION 1, UNIT $unitNumber',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    
-                    // Lesson number overlay - positioned below node
-                    Positioned(
-                      left: isLeftSide ? 75 : null, // Centered on node
-                      right: isLeftSide ? null : 75,
-                      bottom: 15, // Position at bottom with some margin
-                      child: Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(15),
-                          border: Border.all(
-                            color: _getLessonColor(status), 
-                            width: 2.5
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 6,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${index + 1}',
-                            style: TextStyle(
-                              color: _getLessonColor(status),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                    const SizedBox(height: 6),
+                    Text(
+                      unit['title'] ?? 'Unit $unitNumber',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
               ),
               
-              // Connection path
-              if (!isLast)
-                _buildZigzagConnectionPath(isLeftSide, index + 1 < lessons.length),
-            ],
-          );
-        }),
-      ),
-    );
-  }
-
-  Widget _buildLessonNode(Map<String, dynamic> lesson, String status, bool isCurrentLesson, int unitIndex, int lessonNumber) {
-    final lessonId = lesson['lessonId'] as String;
-    
-    // Get unitId from learnmap data
-    String unitId;
-    if (controller?.learnmap != null) {
-      final units = controller!.learnmap!['unitProgress'] as List<dynamic>? ?? [];
-      if (unitIndex < units.length) {
-        unitId = units[unitIndex]['unitId'] as String;
-      } else {
-        unitId = 'unit_$unitIndex';
-      }
-    } else {
-      unitId = 'unit_$unitIndex';
-    }
-    
-    return GestureDetector(
-      onTap: () => _navigateToLesson(unitId, lessonId, status),
-      child: Container(
-        width: 90, // Keep larger size
-        height: 90, // Keep larger size
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none, // Allow START! bubble to overflow
-          children: [
-            // Main circle (larger)
-            Container(
-              width: 80, // Increased from 70
-              height: 80, // Increased from 70
-              decoration: BoxDecoration(
-                gradient: _getLessonGradient(status),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _getLessonColor(status).withOpacity(0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
-                border: Border.all(
+              // Menu icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.more_horiz,
                   color: Colors.white,
-                  width: 4, // Thicker border
+                  size: 20,
                 ),
               ),
-              child: Icon(
-                _getLessonIcon(status),
-                color: Colors.white,
-                size: status == 'locked' ? 28 : 32, // Larger icons
-              ),
-            ),
-            
-            // START! bubble for current lesson - positioned above node with animation
-            if (isCurrentLesson)
-              AnimatedBuilder(
-                animation: _startBubbleAnimation,
-                builder: (context, child) {
-                  return Positioned(
-                    top: _startBubbleAnimation.value, // Animated position
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(15),
-                        border: Border.all(color: _getLessonColor(status), width: 2),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.15),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'START!',
-                        style: TextStyle(
-                          color: _getLessonColor(status),
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
     );
-  }
-
-  Widget _buildZigzagConnectionPath(bool currentIsLeft, bool hasNext) {
-    const double verticalSpacing = 50.0;
-    
-    if (!hasNext) return const SizedBox.shrink();
-    
-    // Next lesson will be on opposite side
-    final nextIsLeft = !currentIsLeft;
-    const double nodeOffset = 85.0; // Adjusted for better centering
-    
-    return Container(
-      height: verticalSpacing,
-      width: double.infinity,
-      child: Stack(
-        children: [
-          // Vertical line down from current node
-          Positioned(
-            left: currentIsLeft ? nodeOffset : null,
-            right: currentIsLeft ? null : nodeOffset,
-            top: 0,
-            child: Container(
-              width: 2,
-              height: verticalSpacing * 0.4,
-              color: AppThemes.systemGray3,
-            ),
-          ),
-          
-          // Horizontal line connecting both sides
-          Positioned(
-            top: verticalSpacing * 0.4,
-            left: nodeOffset,
-            right: nodeOffset,
-            child: Container(
-              height: 2,
-              color: AppThemes.systemGray3,
-            ),
-          ),
-          
-          // Vertical line up to next node
-          Positioned(
-            left: nextIsLeft ? nodeOffset : null,
-            right: nextIsLeft ? null : nodeOffset,
-            top: verticalSpacing * 0.4,
-            child: Container(
-              width: 2,
-              height: verticalSpacing * 0.6,
-              color: AppThemes.systemGray3,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  LinearGradient _getLessonGradient(String status) {
-    switch (status) {
-      case 'completed':
-        return const LinearGradient(
-          colors: [AppThemes.goldColor, AppThemes.systemOrange], // Gold gradient
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      case 'unlocked':
-      case 'in_progress':
-        return const LinearGradient(
-          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight], // Green gradient
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-      default:
-        return LinearGradient(
-          colors: [AppThemes.systemGray3, AppThemes.systemGray2], // Grey gradient
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        );
-    }
-  }
-
-  Color _getLessonColor(String status) {
-    switch (status) {
-      case 'completed':
-        return AppThemes.goldColor;
-      case 'unlocked':
-      case 'in_progress':
-        return AppThemes.primaryGreen;
-      default:
-        return AppThemes.systemGray3;
-    }
-  }
-
-  IconData _getLessonIcon(String status) {
-    switch (status) {
-      case 'completed':
-        return Icons.check;
-      case 'unlocked':
-      case 'in_progress':
-        return Icons.play_arrow;
-      default:
-        return Icons.lock;
-    }
   }
 }

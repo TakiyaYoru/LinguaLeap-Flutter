@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 
 class AppThemes {
   // MARK: - Primary Colors (Matching your iOS App)
-  static const Color primaryGreen = Color(0xFF34C759);      // Main green như iOS app
+  static const Color primaryGreen = Color.fromARGB(255, 15, 187, 61);      // Main green như iOS app
   static const Color primaryGreenDark = Color(0xFF30A14E);
   static const Color primaryGreenLight = Color(0xFF4CD964);
   

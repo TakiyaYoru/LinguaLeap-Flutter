@@ -155,35 +155,53 @@ class _LessonDetailPageState extends State<LessonDetailPage>
   bool _checkAnswer(Map<String, dynamic> exercise, int selectedAnswer) {
     final type = exercise['type'];
     
-    switch (type) {
-      case 'multiple_choice':
-        // Parse content từ JSON string
-        final contentString = exercise['content'] as String?;
-        if (contentString != null) {
-          try {
-            final content = jsonDecode(contentString) as Map<String, dynamic>;
-            if (content['correctAnswer'] != null) {
-              return selectedAnswer == content['correctAnswer'];
-            }
-          } catch (e) {
-            print('❌ Error parsing content JSON: $e');
-          }
-        }
-        // Fallback: kiểm tra trong question text
-        final questionText = exercise['question']['text'] as String?;
-        if (questionText != null) {
-          // Tạm thời hardcode cho demo, sau này sẽ parse từ content
-          return selectedAnswer == 0; // Giả sử đáp án đầu tiên là đúng
-        }
-        break;
-      case 'fill_blank':
-        // Logic cho fill blank
-        return selectedAnswer == 0; // Tạm thời
-      default:
-        return selectedAnswer == 0; // Tạm thời
+    // Parse content
+    Map<String, dynamic> content = {};
+    try {
+      if (exercise['content'] is String) {
+        content = jsonDecode(exercise['content'] as String) as Map<String, dynamic>;
+      } else if (exercise['content'] is Map) {
+        content = exercise['content'] as Map<String, dynamic>;
+      }
+    } catch (e) {
+      print('❌ Error parsing content: $e');
+      return false;
     }
     
-    return false;
+    switch (type) {
+      case 'multiple_choice':
+        final correctAnswer = content['correctAnswer'];
+        return correctAnswer != null && selectedAnswer == correctAnswer;
+        
+      case 'fill_blank':
+        // Trong fill_blank, alternatives[0] thường là đáp án đúng
+        // Hoặc có thể có correctAnswer field
+        final correctAnswer = content['correctAnswer'];
+        if (correctAnswer != null) {
+          final alternatives = content['alternatives'] as List<dynamic>? ?? [];
+          return selectedAnswer == 0; // Giả sử đáp án đầu tiên là đúng
+        }
+        return selectedAnswer == 0; // Fallback
+        
+      case 'listening':
+        final correctAnswer = content['correctAnswer'];
+        return correctAnswer != null && selectedAnswer == correctAnswer;
+        
+      case 'translation':
+        // Trong translation, alternatives[0] thường là đáp án đúng
+        return selectedAnswer == 0;
+        
+      case 'word_matching':
+        // Trong word_matching, mỗi pair là một đáp án đúng
+        return selectedAnswer >= 0 && selectedAnswer < (content['pairs']?.length ?? 0);
+        
+      case 'speak_repeat':
+        // speak_repeat thường auto-complete
+        return true;
+        
+      default:
+        return selectedAnswer == 0; // Fallback
+    }
   }
 
   Future<void> _markExerciseCompleted(String exerciseId, int score) async {
@@ -596,26 +614,26 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     final type = exercise['type'];
     final question = exercise['question']['text'] as String? ?? 'Câu hỏi';
     
-    // Parse content từ JSON string
-    List<dynamic> options = [];
+    // Parse content từ JSON string hoặc object
+    Map<String, dynamic> content = {};
     try {
-      final contentString = exercise['content'] as String?;
-      if (contentString != null) {
-        final content = jsonDecode(contentString) as Map<String, dynamic>;
-        options = content['options'] as List<dynamic>? ?? [];
+      if (exercise['content'] is String) {
+        content = jsonDecode(exercise['content'] as String) as Map<String, dynamic>;
+      } else if (exercise['content'] is Map) {
+        content = exercise['content'] as Map<String, dynamic>;
       }
     } catch (e) {
-      print('❌ Error parsing content JSON: $e');
-      options = [];
+      print('❌ Error parsing content: $e');
+      content = {};
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Question Design
-        const Text(
-          'Translate this sentence',
-          style: TextStyle(
+        Text(
+          _getQuestionTitle(type),
+          style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: AppThemes.lightLabel,
@@ -664,7 +682,184 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         
         const SizedBox(height: 32),
         
-        // Options Design
+        // Exercise Content based on type
+        Expanded(
+          child: _buildExerciseContent(type, content),
+        ),
+      ],
+    );
+  }
+
+  String _getQuestionTitle(String type) {
+    switch (type) {
+      case 'multiple_choice':
+        return 'Chọn đáp án đúng';
+      case 'fill_blank':
+        return 'Điền từ vào chỗ trống';
+      case 'listening':
+        return 'Nghe và chọn';
+      case 'translation':
+        return 'Dịch câu';
+      case 'word_matching':
+        return 'Ghép từ';
+      case 'speak_repeat':
+        return 'Nói và lặp lại';
+      default:
+        return 'Hoàn thành bài tập';
+    }
+  }
+
+  Widget _buildExerciseContent(String type, Map<String, dynamic> content) {
+    switch (type) {
+      case 'multiple_choice':
+        return _buildMultipleChoice(content);
+      case 'fill_blank':
+        return _buildFillBlank(content);
+      case 'listening':
+        return _buildListening(content);
+      case 'translation':
+        return _buildTranslation(content);
+      case 'word_matching':
+        return _buildWordMatching(content);
+      case 'speak_repeat':
+        return _buildSpeakRepeat(content);
+      default:
+        return _buildMultipleChoice(content); // Fallback
+    }
+  }
+
+  Widget _buildMultipleChoice(Map<String, dynamic> content) {
+    List<dynamic> options = content['options'] as List<dynamic>? ?? [];
+    
+    return ListView.builder(
+      itemCount: options.length,
+      itemBuilder: (context, index) {
+        final option = options[index].toString();
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            borderRadius: BorderRadius.circular(16),
+            elevation: 0,
+            child: InkWell(
+              onTap: () => _handleAnswer(index),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppThemes.lightBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppThemes.systemGray4, width: 2),
+                ),
+                child: Text(
+                  option,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: AppThemes.lightLabel,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFillBlank(Map<String, dynamic> content) {
+    String sentence = content['sentence'] ?? '';
+    List<dynamic> alternatives = content['alternatives'] as List<dynamic>? ?? [];
+    
+    return Column(
+      children: [
+        // Sentence with blank
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemes.lightBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.systemGray4),
+          ),
+          child: Text(
+            sentence,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppThemes.lightLabel,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Alternatives as options
+        Expanded(
+          child: ListView.builder(
+            itemCount: alternatives.length,
+            itemBuilder: (context, index) {
+              final alternative = alternatives[index].toString();
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 0,
+                  child: InkWell(
+                    onTap: () => _handleAnswer(index),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppThemes.lightBackground,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppThemes.systemGray4, width: 2),
+                      ),
+                      child: Text(
+                        alternative,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppThemes.lightLabel,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListening(Map<String, dynamic> content) {
+    List<dynamic> options = content['options'] as List<dynamic>? ?? [];
+    
+    return Column(
+      children: [
+        // Audio button
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.play_arrow,
+            color: Colors.white,
+            size: 40,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Options
         Expanded(
           child: ListView.builder(
             itemCount: options.length,
@@ -700,6 +895,203 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                 ),
               );
             },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTranslation(Map<String, dynamic> content) {
+    String sourceText = content['sourceText'] ?? '';
+    List<dynamic> alternatives = content['alternatives'] as List<dynamic>? ?? [];
+    
+    return Column(
+      children: [
+        // Source text
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemes.lightBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.systemGray4),
+          ),
+          child: Text(
+            sourceText,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+              color: AppThemes.lightLabel,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Alternatives
+        Expanded(
+          child: ListView.builder(
+            itemCount: alternatives.length,
+            itemBuilder: (context, index) {
+              final alternative = alternatives[index].toString();
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 0,
+                  child: InkWell(
+                    onTap: () => _handleAnswer(index),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppThemes.lightBackground,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppThemes.systemGray4, width: 2),
+                      ),
+                      child: Text(
+                        alternative,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppThemes.lightLabel,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWordMatching(Map<String, dynamic> content) {
+    List<dynamic> pairs = content['pairs'] as List<dynamic>? ?? [];
+    
+    return ListView.builder(
+      itemCount: pairs.length,
+      itemBuilder: (context, index) {
+        final pair = pairs[index] as Map<String, dynamic>;
+        final word = pair['word'] ?? '';
+        final meaning = pair['meaning'] ?? '';
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            borderRadius: BorderRadius.circular(16),
+            elevation: 0,
+            child: InkWell(
+              onTap: () => _handleAnswer(index),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppThemes.lightBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppThemes.systemGray4, width: 2),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      word,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemes.lightLabel,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      meaning,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppThemes.lightSecondaryLabel,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSpeakRepeat(Map<String, dynamic> content) {
+    String targetWord = content['targetWord'] ?? '';
+    String meaning = content['meaning'] ?? '';
+    
+    return Column(
+      children: [
+        // Target word
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemes.lightBackground,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.systemGray4),
+          ),
+          child: Column(
+            children: [
+              Text(
+                targetWord,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemes.lightLabel,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                meaning,
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: AppThemes.lightSecondaryLabel,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Speak button
+        Container(
+          width: 120,
+          height: 120,
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.mic,
+            color: Colors.white,
+            size: 60,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Continue button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _handleAnswer(0), // Auto continue for speak_repeat
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppThemes.primaryGreen,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            child: const Text(
+              'CONTINUE',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
           ),
         ),
       ],

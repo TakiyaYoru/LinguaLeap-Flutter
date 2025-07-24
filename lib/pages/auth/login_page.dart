@@ -24,6 +24,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
+    // Luôn clear token trước khi login mới
+    await AuthService.clearToken();
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
         _message = 'Vui lòng nhập email và password';

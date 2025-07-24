@@ -1,8 +1,9 @@
 // lib/features/profile/presentation/pages/profile_page.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../network/auth_service.dart';
-import '../../../../models/user_model.dart';
+import '../network/auth_service.dart';
+import '../models/user_model.dart';
+import '../theme/app_themes.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -55,13 +56,17 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: AppThemes.lightGroupedBackground,
       appBar: AppBar(
-        title: const Text('Profile'),
+        backgroundColor: AppThemes.lightSecondaryBackground,
+        title: const Text(
+          'Hồ sơ',
+          style: TextStyle(color: AppThemes.lightLabel),
+        ),
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings),
+            icon: Icon(Icons.settings, color: AppThemes.primaryGreen),
             onPressed: _openSettings,
             tooltip: 'Cài đặt',
           ),
@@ -90,11 +95,11 @@ class _ProfilePageState extends State<ProfilePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: AppThemes.lightBackground,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -104,16 +109,15 @@ class _ProfilePageState extends State<ProfilePage> {
               children: [
                 CircleAvatar(
                   radius: 40,
-                  backgroundColor:
-                      Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                  backgroundColor: AppThemes.primaryGreen.withOpacity(0.2),
                   child: Text(
                     user!.displayName.isNotEmpty
                         ? user!.displayName[0].toUpperCase()
                         : 'U',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: AppThemes.primaryGreen,
                     ),
                   ),
                 ),
@@ -123,25 +127,24 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
+                    color: AppThemes.lightLabel,
                   ),
                 ),
                 Text(
                   '@${user!.username}',
                   style: TextStyle(
                     fontSize: 16,
-                    color:
-                        Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                    color: AppThemes.lightSecondaryLabel,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('Level', user!.currentLevel, Colors.blue),
-                    _buildStatItem('XP', '${user!.totalXP}', Colors.orange),
-                    _buildStatItem('Hearts', '${user!.hearts}/5', Colors.red),
-                    _buildStatItem(
-                        'Streak', '${user!.currentStreak}', Colors.purple),
+                    _buildStatItem('Level', user!.currentLevel, AppThemes.systemBlue),
+                    _buildStatItem('XP', '${user!.totalXP}', AppThemes.xp),
+                    _buildStatItem('Hearts', '${user!.hearts}/5', AppThemes.hearts),
+                    _buildStatItem('Streak', '${user!.currentStreak}', AppThemes.streak),
                   ],
                 ),
               ],
@@ -154,11 +157,11 @@ class _ProfilePageState extends State<ProfilePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: AppThemes.lightBackground,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -172,6 +175,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: AppThemes.lightLabel,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -210,11 +214,11 @@ class _ProfilePageState extends State<ProfilePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor, // Fixed: Đã thay đổi từ Colors.white
+              color: AppThemes.lightBackground,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -224,10 +228,11 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Account Information',
+                  'Thông tin tài khoản',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    color: AppThemes.lightLabel,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -261,12 +266,12 @@ class _ProfilePageState extends State<ProfilePage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: AppThemes.primaryGreen.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
                   icon,
-                  color: Colors.blue,
+                  color: AppThemes.primaryGreen,
                   size: 20,
                 ),
               ),
@@ -277,13 +282,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
+                    color: AppThemes.lightLabel,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: Colors.grey.shade400,
+                color: AppThemes.lightSecondaryLabel,
               ),
             ],
           ),
@@ -315,7 +321,7 @@ class _ProfilePageState extends State<ProfilePage> {
           label,
           style: TextStyle(
             fontSize: 12,
-            color: Colors.grey.shade600,
+            color: AppThemes.lightSecondaryLabel,
           ),
         ),
       ],
@@ -332,7 +338,7 @@ class _ProfilePageState extends State<ProfilePage> {
             label,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.grey.shade600,
+              color: AppThemes.lightSecondaryLabel,
             ),
           ),
           Text(
@@ -340,6 +346,7 @@ class _ProfilePageState extends State<ProfilePage> {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
+              color: AppThemes.lightLabel,
             ),
           ),
         ],

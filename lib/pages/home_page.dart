@@ -199,30 +199,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 16,
-            left: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '🎉 Special Offer!',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Text(
-                  'Get 50% off Premium',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );

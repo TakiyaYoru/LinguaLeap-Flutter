@@ -1,3 +1,4 @@
+
 // lib/pages/practice/practice_page.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -129,11 +130,7 @@ class PracticePage extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppThemes.primaryGreen,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
