@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../network/auth_service.dart';
 import '../models/user_model.dart';
+import '../theme/app_themes.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -59,18 +60,19 @@ class _HomePageState extends State<HomePage> {
     }
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppThemes.lightGroupedBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF40C4AA),
-        title: const Text('Trang chủ', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppThemes.lightSecondaryBackground,
+        title: const Text('Trang chủ', style: TextStyle(color: AppThemes.lightLabel)),
         actions: [
           IconButton(
-            icon: const Icon(Icons.menu, color: Colors.white),
+            icon: Icon(Icons.menu, color: AppThemes.primaryGreen),
             onPressed: () {},
           ),
         ],
       ),
       body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -80,11 +82,11 @@ class _HomePageState extends State<HomePage> {
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppThemes.lightBackground,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withOpacity(0.08),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -98,7 +100,7 @@ class _HomePageState extends State<HomePage> {
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
-                      color: Color(0xFF40C4AA),
+                      color: AppThemes.primaryGreen,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -106,27 +108,27 @@ class _HomePageState extends State<HomePage> {
                     'Ready to learn English today?',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey[600],
+                      color: AppThemes.lightSecondaryLabel,
                     ),
                   ),
                   const SizedBox(height: 16),
                   if (user != null) ...[
                     Row(
                       children: [
-                        _buildStatChip('Level ${user!.currentLevel}', Colors.blue),
+                        _buildStatChip('Level ${user!.currentLevel}', AppThemes.systemBlue),
                         const SizedBox(width: 8),
-                        _buildStatChip('${user!.totalXP} XP', Colors.orange),
+                        _buildStatChip('${user!.totalXP} XP', AppThemes.xp),
                       ],
                     ),
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _buildStatChip('❤️ ${user!.hearts}/5', Colors.red),
+                        _buildStatChip('❤️ ${user!.hearts}/5', AppThemes.hearts),
                         const SizedBox(width: 8),
-                        _buildStatChip('🔥 ${user!.currentStreak} days', Colors.purple),
+                        _buildStatChip('🔥 ${user!.currentStreak} days', AppThemes.streak),
                         const SizedBox(width: 8),
                         if (user!.isPremium)
-                          _buildStatChip('👑 Premium', Colors.amber),
+                          _buildStatChip('👑 Premium', AppThemes.premium),
                       ],
                     ),
                   ],
@@ -170,7 +172,7 @@ class _HomePageState extends State<HomePage> {
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: color.withOpacity(0.8),
+          color: color,
         ),
       ),
     );
@@ -198,11 +200,27 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () {},
+            bottom: 16,
+            left: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '🎉 Special Offer!',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Text(
+                  'Get 50% off Premium',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -212,145 +230,180 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 18,
+          fontSize: 20,
           fontWeight: FontWeight.bold,
+          color: AppThemes.lightLabel,
         ),
       ),
     );
   }
 
   Widget _buildPracticeGrid() {
-    final items = [
-      {'icon': 'Aa', 'title': 'Từ vựng', 'color': const Color(0xFF40C4AA)},
-      {'icon': 'A_', 'title': 'Ngữ pháp', 'color': Colors.orange},
-      {'icon': '🎧', 'title': 'Nghe hiểu', 'color': Colors.orange.shade200},
-      {'icon': '📖', 'title': 'Đọc hiểu', 'color': const Color(0xFF40C4AA)},
-    ];
-
-    return GridView.count(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 16,
-      crossAxisSpacing: 16,
-      childAspectRatio: 2.5,
-      children: items.map((item) => _buildPracticeItem(item)).toList(),
-    );
-  }
-
-  Widget _buildPracticeItem(Map<String, dynamic> item) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.2,
+        children: [
+          _buildPracticeCard(
+            'Luyện nói',
+            Icons.mic,
+            AppThemes.speaking,
+            () => _showComingSoon('Luyện nói'),
+          ),
+          _buildPracticeCard(
+            'Luyện nghe',
+            Icons.headphones,
+            AppThemes.listening,
+            () => _showComingSoon('Luyện nghe'),
+          ),
+          _buildPracticeCard(
+            'Luyện đọc',
+            Icons.menu_book,
+            AppThemes.reading,
+            () => context.push('/reading-practice'),
+          ),
+          _buildPracticeCard(
+            'Từ vựng',
+            Icons.translate,
+            AppThemes.vocabulary,
+            () => context.push('/vocabulary'),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            margin: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: item['color'].withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+    );
+  }
+
+  Widget _buildPracticeCard(String title, IconData icon, Color color, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppThemes.lightBackground,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-            child: Center(
-              child: Text(
-                item['icon'],
-                style: TextStyle(
-                  fontSize: 16,
-                  color: item['color'],
-                  fontWeight: FontWeight.bold,
-                ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                size: 32,
+                color: color,
               ),
             ),
-          ),
-          Expanded(
-            child: Text(
-              item['title'],
+            const SizedBox(height: 12),
+            Text(
+              title,
               style: const TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
+                color: AppThemes.lightLabel,
               ),
+              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildHistorySection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Lịch sử'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.lightBackground,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          child: Column(
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              _buildHistoryItem('Vo', 'Cách đọc từ vựng'),
-              _buildHistoryItem('Gr', 'Dạng ngữ pháp'),
-              _buildHistoryItem('Re', 'Đoạn văn ngắn'),
-              _buildHistoryItem('Li', 'Nghe hiểu chủ đề'),
+              Icon(Icons.history, color: AppThemes.primaryGreen),
+              const SizedBox(width: 8),
+              const Text(
+                'Lịch sử học tập',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemes.lightLabel,
+                ),
+              ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          _buildHistoryItem('Lesson 1: Basic Greetings', '2 hours ago', AppThemes.systemGreen),
+          _buildHistoryItem('Vocabulary: Colors', '1 day ago', AppThemes.systemBlue),
+          _buildHistoryItem('Grammar: Present Simple', '2 days ago', AppThemes.systemOrange),
+        ],
+      ),
     );
   }
 
-  Widget _buildHistoryItem(String icon, String title) {
+  Widget _buildHistoryItem(String title, String time, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
-              color: const Color(0xFF40C4AA),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                icon,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                ),
-              ),
+              color: color,
+              shape: BoxShape.circle,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppThemes.lightLabel,
+                  ),
+                ),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemes.lightSecondaryLabel,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const Icon(
-            Icons.arrow_forward_ios,
-            size: 16,
-            color: Colors.grey,
           ),
         ],
       ),
@@ -358,69 +411,88 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildSavedSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.lightBackground,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
+              Icon(Icons.bookmark, color: AppThemes.primaryGreen),
+              const SizedBox(width: 8),
               const Text(
                 'Đã lưu',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: AppThemes.lightLabel,
                 ),
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Xem thêm'),
-              ),
             ],
           ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildSavedCounter('Từ vựng', '0'),
-              _buildSavedCounter('Ngữ pháp', '0'),
-              _buildSavedCounter('Câu hỏi', '0'),
-            ],
-          ),
-        ),
-      ],
+          const SizedBox(height: 16),
+          _buildSavedItem('Useful Phrases', '15 items', AppThemes.systemTeal),
+          _buildSavedItem('Grammar Rules', '8 items', AppThemes.systemPurple),
+        ],
+      ),
     );
   }
 
-  Widget _buildSavedCounter(String title, String count) {
-    return Container(
-      width: 100,
-      height: 80,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Widget _buildSavedItem(String title, String count, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
         children: [
-          Text(
-            count,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF40C4AA),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.folder,
+              size: 20,
+              color: color,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: AppThemes.lightLabel,
+                  ),
+                ),
+                Text(
+                  count,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemes.lightSecondaryLabel,
+                  ),
+                ),
+              ],
             ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            color: AppThemes.lightSecondaryLabel,
           ),
         ],
       ),
@@ -428,28 +500,77 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildNotesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('Ghi chú'),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppThemes.lightBackground,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
-          child: const Center(
-            child: Text(
-              'Danh sách ghi chú trống',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 16,
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.note, color: AppThemes.primaryGreen),
+              const SizedBox(width: 8),
+              const Text(
+                'Ghi chú',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemes.lightLabel,
+                ),
               ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildNoteItem('Remember to practice pronunciation', 'Today'),
+          _buildNoteItem('Review irregular verbs', 'Yesterday'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoteItem(String content, String date) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            content,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppThemes.lightLabel,
             ),
           ),
-        ),
-      ],
+          Text(
+            date,
+            style: TextStyle(
+              fontSize: 12,
+              color: AppThemes.lightSecondaryLabel,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showComingSoon(String feature) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$feature - Coming Soon!'),
+        backgroundColor: AppThemes.primaryGreen,
+        duration: const Duration(seconds: 2),
+      ),
     );
   }
 }

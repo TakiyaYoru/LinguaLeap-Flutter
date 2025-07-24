@@ -1,6 +1,7 @@
 // lib/pages/practice/practice_page.dart
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../theme/app_themes.dart';
 
 class PracticePage extends StatelessWidget {
   const PracticePage({super.key});
@@ -8,15 +9,16 @@ class PracticePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppThemes.lightGroupedBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF40C4AA),
+        backgroundColor: AppThemes.lightSecondaryBackground,
         title: const Text(
           'Luyện tập',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppThemes.lightLabel),
         ),
       ),
       body: ListView(
+        physics: const BouncingScrollPhysics(),
         children: [
           // Practice Stats
           _buildPracticeStats(),
@@ -32,7 +34,7 @@ class PracticePage extends StatelessWidget {
                   context,
                   icon: Icons.chat_bubble_outline,
                   title: 'Giao tiếp',
-                  color: Colors.blue,
+                  color: AppThemes.speaking,
                 ),
                 const SizedBox(height: 12),
                 _buildPracticeCard(
@@ -40,7 +42,7 @@ class PracticePage extends StatelessWidget {
                   title: 'Luyện nói',
                   subtitle: 'Thực hành hội thoại và phát âm',
                   icon: Icons.mic,
-                  color: Colors.blue,
+                  color: AppThemes.speaking,
                   isComingSoon: true,
                   onTap: () => _showComingSoon(context, 'Luyện nói'),
                 ),
@@ -52,7 +54,7 @@ class PracticePage extends StatelessWidget {
                   context,
                   icon: Icons.trending_up,
                   title: 'Kỹ năng',
-                  color: Colors.orange,
+                  color: AppThemes.mistakes,
                 ),
                 const SizedBox(height: 12),
                 _buildPracticeCard(
@@ -60,7 +62,7 @@ class PracticePage extends StatelessWidget {
                   title: 'Các lỗi sai cũ',
                   subtitle: 'Ôn tập những lỗi sai trước đây',
                   icon: Icons.error_outline,
-                  color: Colors.red,
+                  color: AppThemes.mistakes,
                   isComingSoon: true,
                   onTap: () => _showComingSoon(context, 'Ôn tập lỗi sai'),
                 ),
@@ -70,7 +72,7 @@ class PracticePage extends StatelessWidget {
                   title: 'Luyện nghe',
                   subtitle: 'Cải thiện kỹ năng nghe',
                   icon: Icons.headphones,
-                  color: Colors.purple,
+                  color: AppThemes.listening,
                   isComingSoon: true,
                   onTap: () => _showComingSoon(context, 'Luyện nghe'),
                 ),
@@ -80,7 +82,7 @@ class PracticePage extends StatelessWidget {
                   title: 'Luyện đọc',
                   subtitle: 'Nâng cao khả năng đọc hiểu',
                   icon: Icons.menu_book,
-                  color: Colors.teal,
+                  color: AppThemes.reading,
                   isComingSoon: false,
                   onTap: () => context.push('/reading-practice'),
                 ),
@@ -92,15 +94,15 @@ class PracticePage extends StatelessWidget {
                   context,
                   icon: Icons.school,
                   title: 'Học tập',
-                  color: Colors.green,
+                  color: AppThemes.primaryGreen,
                 ),
                 const SizedBox(height: 12),
                 _buildPracticeCard(
                   context,
                   title: 'Radio',
-                  subtitle: 'Nghe podcast và radio tiếng Anh',
+                  subtitle: 'Radio tiếng Anh',
                   icon: Icons.radio,
-                  color: Colors.indigo,
+                  color: AppThemes.systemTeal,
                   isComingSoon: true,
                   onTap: () => _showComingSoon(context, 'Radio tiếng Anh'),
                 ),
@@ -108,9 +110,9 @@ class PracticePage extends StatelessWidget {
                 _buildPracticeCard(
                   context,
                   title: 'Từ vựng',
-                  subtitle: 'Quản lý và ôn tập từ vựng',
-                  icon: Icons.book,
-                  color: Colors.green,
+                  subtitle: 'Ôn tập từ vựng đã học',
+                  icon: Icons.translate,
+                  color: AppThemes.vocabulary,
                   isComingSoon: false,
                   onTap: () => context.push('/vocabulary'),
                 ),
@@ -125,38 +127,74 @@ class PracticePage extends StatelessWidget {
   Widget _buildPracticeStats() {
     return Container(
       margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        gradient: const LinearGradient(
+          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
+            color: AppThemes.primaryGreen.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: Column(
         children: [
-          _buildStatItem(
-            icon: Icons.timer,
-            value: '30',
-            label: 'Phút',
-            color: Colors.blue,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatItem(
+                icon: Icons.local_fire_department,
+                value: '7',
+                label: 'Streak',
+                color: AppThemes.streak,
+              ),
+              _buildStatItem(
+                icon: Icons.diamond,
+                value: '1,247',
+                label: 'XP',
+                color: AppThemes.xp,
+              ),
+              _buildStatItem(
+                icon: Icons.favorite,
+                value: '5',
+                label: 'Hearts',
+                color: AppThemes.hearts,
+              ),
+            ],
           ),
-          _buildStatItem(
-            icon: Icons.check_circle,
-            value: '15',
-            label: 'Hoàn thành',
-            color: Colors.green,
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            height: 8,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: 0.7, // 70% progress
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
           ),
-          _buildStatItem(
-            icon: Icons.trending_up,
-            value: '85%',
-            label: 'Chính xác',
-            color: const Color(0xFF40C4AA),
+          const SizedBox(height: 8),
+          const Text(
+            'Level 5 - Intermediate',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -169,30 +207,35 @@ class PracticePage extends StatelessWidget {
     required String label,
     required Color color,
   }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Column(
       children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 6),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
-              ),
-            ),
-          ],
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: color,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12,
+          ),
         ),
       ],
     );
@@ -214,16 +257,17 @@ class PracticePage extends StatelessWidget {
           ),
           child: Icon(
             icon,
-            size: 20,
             color: color,
+            size: 20,
           ),
         ),
         const SizedBox(width: 12),
         Text(
           title,
           style: const TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
+            color: AppThemes.lightLabel,
           ),
         ),
       ],
@@ -239,87 +283,81 @@ class PracticePage extends StatelessWidget {
     required bool isComingSoon,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    icon,
-                    size: 24,
-                    color: color,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isComingSoon)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.amber.withOpacity(0.5),
-                      ),
-                    ),
-                    child: const Text(
-                      'Coming soon',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.amber,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppThemes.lightBackground,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
-          ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.lightLabel,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemes.lightSecondaryLabel,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isComingSoon)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppThemes.systemOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Soon',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppThemes.systemOrange,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right,
+              color: AppThemes.lightSecondaryLabel,
+            ),
+          ],
         ),
       ),
     );
@@ -328,7 +366,8 @@ class PracticePage extends StatelessWidget {
   void _showComingSoon(BuildContext context, String feature) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('$feature is coming soon!'),
+        content: Text('$feature - Coming Soon!'),
+        backgroundColor: AppThemes.primaryGreen,
         duration: const Duration(seconds: 2),
       ),
     );

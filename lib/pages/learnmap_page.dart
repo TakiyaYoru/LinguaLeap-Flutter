@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../controllers/learnmap_controller.dart';
 import '../network/course_service.dart';
 import '../network/learnmap_service.dart';
+import '../theme/app_themes.dart';
 import 'lesson_detail_page.dart';
 
 class LearnmapPage extends StatefulWidget {
@@ -31,17 +32,17 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   // Unit gradient colors matching app theme
   final List<LinearGradient> unitGradients = [
     const LinearGradient(
-      colors: [Color(0xFFFF6B6B), Color(0xFFFF8E53)], // Coral red
+      colors: [AppThemes.systemRed, AppThemes.systemOrange], // Red to Orange
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     const LinearGradient(
-      colors: [Color(0xFF4ECDC4), Color(0xFF44A08D)], // Teal green
+      colors: [AppThemes.primaryGreen, AppThemes.systemTeal], // Green to Teal
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
     const LinearGradient(
-      colors: [Color(0xFF667eea), Color(0xFF764ba2)], // Blue purple
+      colors: [AppThemes.systemBlue, AppThemes.systemIndigo], // Blue to Indigo
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
     ),
@@ -187,7 +188,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: AppThemes.lightGroupedBackground,
       body: SafeArea(
         child: Column(
           children: [
@@ -208,7 +209,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -231,7 +232,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                   height: 14,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(2),
-                    color: Colors.blue.shade600,
+                    color: AppThemes.systemBlue,
                   ),
                   child: const Center(
                     child: Text('🇺🇸', style: TextStyle(fontSize: 10)),
@@ -256,7 +257,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
               // Streak
               _buildStatItem(
                 icon: Icons.local_fire_department,
-                iconColor: Colors.orange,
+                iconColor: AppThemes.streak,
                 value: '4',
               ),
               const SizedBox(width: 20),
@@ -264,7 +265,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
               // XP/Gems
               _buildStatItem(
                 icon: Icons.diamond,
-                iconColor: Colors.cyan,
+                iconColor: AppThemes.xp,
                 value: '957',
               ),
               const SizedBox(width: 20),
@@ -272,7 +273,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
               // Hearts (real data)
               _buildStatItem(
                 icon: Icons.favorite,
-                iconColor: Colors.red,
+                iconColor: AppThemes.hearts,
                 value: '${gamificationData?.hearts ?? 5}',
               ),
               const SizedBox(width: 20),
@@ -281,7 +282,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: Colors.amber,
+                  color: AppThemes.premium,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -324,7 +325,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       padding: const EdgeInsets.symmetric(vertical: 10),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF667eea), Color(0xFF764ba2)],
+          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -357,7 +358,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                 child: Text(
                   course['title'] ?? 'Unknown Course',
                   style: TextStyle(
-                    color: isSelected ? const Color(0xFF667eea) : Colors.white,
+                    color: isSelected ? AppThemes.primaryGreen : Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                   ),
@@ -389,12 +390,12 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF667eea)),
+                      valueColor: AlwaysStoppedAnimation<Color>(AppThemes.primaryGreen),
                     ),
                     SizedBox(height: 16),
                     Text(
                       'Loading your learning path...',
-                      style: TextStyle(color: Colors.grey),
+                      style: TextStyle(color: AppThemes.lightSecondaryLabel),
                     ),
                   ],
                 ),
@@ -406,7 +407,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+                    Icon(Icons.error_outline, size: 64, color: AppThemes.lightSecondaryLabel),
                     const SizedBox(height: 16),
                     Text('Error: ${controller!.error}'),
                     const SizedBox(height: 16),
@@ -435,6 +436,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             
             return ListView.builder(
               controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
               padding: const EdgeInsets.all(16),
               itemCount: units.length,
               itemBuilder: (context, unitIndex) {
@@ -461,7 +463,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             right: 20,
             child: FloatingActionButton(
               onPressed: _scrollToCurrentLesson,
-              backgroundColor: const Color(0xFF667eea),
+              backgroundColor: AppThemes.primaryGreen,
               child: const Icon(
                 Icons.my_location,
                 color: Colors.white,
@@ -831,7 +833,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             child: Container(
               width: 2,
               height: verticalSpacing * 0.4,
-              color: Colors.grey.shade300,
+              color: AppThemes.systemGray3,
             ),
           ),
           
@@ -842,7 +844,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             right: nodeOffset,
             child: Container(
               height: 2,
-              color: Colors.grey.shade300,
+              color: AppThemes.systemGray3,
             ),
           ),
           
@@ -854,7 +856,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             child: Container(
               width: 2,
               height: verticalSpacing * 0.6,
-              color: Colors.grey.shade300,
+              color: AppThemes.systemGray3,
             ),
           ),
         ],
@@ -866,20 +868,20 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
     switch (status) {
       case 'completed':
         return const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)], // Gold gradient
+          colors: [AppThemes.goldColor, AppThemes.systemOrange], // Gold gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       case 'unlocked':
       case 'in_progress':
         return const LinearGradient(
-          colors: [Color(0xFF667eea), Color(0xFF764ba2)], // Purple gradient
+          colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight], // Green gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
       default:
         return LinearGradient(
-          colors: [Colors.grey.shade400, Colors.grey.shade500], // Grey gradient
+          colors: [AppThemes.systemGray3, AppThemes.systemGray2], // Grey gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         );
@@ -889,12 +891,12 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   Color _getLessonColor(String status) {
     switch (status) {
       case 'completed':
-        return const Color(0xFFFFD700);
+        return AppThemes.goldColor;
       case 'unlocked':
       case 'in_progress':
-        return const Color(0xFF667eea);
+        return AppThemes.primaryGreen;
       default:
-        return Colors.grey.shade400;
+        return AppThemes.systemGray3;
     }
   }
 

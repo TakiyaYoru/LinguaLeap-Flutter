@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../network/learnmap_service.dart';
+import '../theme/app_themes.dart';
 import 'dart:convert'; // Added for jsonDecode
 
 class LessonDetailPage extends StatefulWidget {
@@ -40,10 +41,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
   late Animation<double> _progressAnimation;
   late Animation<Offset> _slideAnimation;
   
-  // Theme colors
-  static const Color primaryColor = Color(0xFF40C4AA);
-  static const Color correctColor = Color(0xFF58CC02);
-  static const Color wrongColor = Color(0xFFFF4B4B);
+
 
   @override
   void initState() {
@@ -240,7 +238,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: correctColor,
+        backgroundColor: AppThemes.primaryGreen,
         title: const Row(
           children: [
             Icon(Icons.check_circle, color: Colors.white, size: 32),
@@ -260,7 +258,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: correctColor,
+              foregroundColor: AppThemes.primaryGreen,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('CONTINUE', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -280,7 +278,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: wrongColor,
+        backgroundColor: AppThemes.hearts,
         title: const Row(
           children: [
             Icon(Icons.cancel, color: Colors.white, size: 32),
@@ -302,7 +300,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: wrongColor,
+              foregroundColor: AppThemes.hearts,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('TRY AGAIN', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -318,27 +316,31 @@ class _LessonDetailPageState extends State<LessonDetailPage>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        backgroundColor: AppThemes.lightBackground,
+        title: Row(
           children: [
-            Icon(Icons.favorite_border, color: Colors.red, size: 32),
-            SizedBox(width: 12),
-            Text('No Hearts Left!'),
+            Icon(Icons.favorite_border, color: AppThemes.hearts, size: 32),
+            const SizedBox(width: 12),
+            Text('No Hearts Left!', style: TextStyle(color: AppThemes.lightLabel)),
           ],
         ),
-        content: const Text('You\'ve run out of hearts. Purchase more hearts or wait for them to refill.'),
+        content: Text(
+          'You\'ve run out of hearts. Purchase more hearts or wait for them to refill.',
+          style: TextStyle(color: AppThemes.lightSecondaryLabel),
+        ),
         actions: [
           TextButton(
             onPressed: () {
               Navigator.of(context).pop();
               _buyHearts();
             },
-            child: const Text('GET HEARTS'),
+            child: Text('GET HEARTS', style: TextStyle(color: AppThemes.primaryGreen)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
             },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+            style: ElevatedButton.styleFrom(backgroundColor: AppThemes.primaryGreen),
             child: const Text('CLOSE', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -388,48 +390,174 @@ class _LessonDetailPageState extends State<LessonDetailPage>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppThemes.lightBackground,
+        title: Column(
           children: [
-            Icon(Icons.celebration, color: Colors.orange, size: 32),
-            SizedBox(width: 12),
-            Text('Congratulations!', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(
+              'Lesson completed!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppThemes.primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Character illustration
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.celebration,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('You completed this lesson!', style: TextStyle(fontSize: 16)),
-            const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(12),
+            // Diamonds section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppThemes.systemBlue, AppThemes.systemIndigo],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.diamond, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Diamonds',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.star, color: Colors.orange, size: 32),
-                      SizedBox(height: 4),
-                      Text('+50 XP', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
+                  const Spacer(),
+                  const Text(
+                    '12',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Stats row
+            Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppThemes.xp, AppThemes.systemOrange],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Total XP',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.flash_on, color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '24',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Time',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.timer, color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '1:45',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  child: const Column(
-                    children: [
-                      Icon(Icons.monetization_on, color: Colors.blue, size: 32),
-                      SizedBox(height: 4),
-                      Text('+10 Coins', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ],
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [AppThemes.hearts, AppThemes.systemRed],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Accuracy',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.track_changes, color: Colors.white, size: 16),
+                            const SizedBox(width: 4),
+                            const Text(
+                              '87%',
+                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -444,13 +572,13 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                 Navigator.of(context).pop();
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: AppThemes.primaryGreen,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text(
-                'AWESOME!',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                'CONTINUE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
           ),
@@ -484,33 +612,33 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Enhanced Question Design
+        // Question Design
         const Text(
-          'What does this sentence mean?',
+          'Translate this sentence',
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
+            color: AppThemes.lightLabel,
           ),
         ),
         
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         
         // Audio sentence
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.grey.shade50,
+            color: AppThemes.lightBackground,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(color: AppThemes.systemGray4),
           ),
           child: Row(
             children: [
               Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(
-                  color: primaryColor,
+                decoration: BoxDecoration(
+                  color: AppThemes.primaryGreen,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -526,6 +654,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
+                    color: AppThemes.lightLabel,
                   ),
                 ),
               ),
@@ -535,7 +664,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         
         const SizedBox(height: 32),
         
-        // Enhanced Options Design
+        // Options Design
         Expanded(
           child: ListView.builder(
             itemCount: options.length,
@@ -553,16 +682,16 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                     child: Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppThemes.lightBackground,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(color: AppThemes.systemGray4, width: 2),
                       ),
                       child: Text(
                         option,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: Colors.black87,
+                          color: AppThemes.lightLabel,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -577,11 +706,13 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     );
   }
 
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
+      backgroundColor: AppThemes.lightBackground,
+            body: SafeArea(
         child: Column(
           children: [
             // Enhanced Top Bar
@@ -592,7 +723,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                   // Close button
                   GestureDetector(
                     onTap: () => Navigator.of(context).pop(),
-                    child: const Icon(Icons.close, size: 24, color: Colors.grey),
+                    child: Icon(Icons.close, size: 24, color: AppThemes.lightSecondaryLabel),
                   ),
                   
                   const SizedBox(width: 16),
@@ -602,7 +733,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                     child: Container(
                       height: 8,
                       decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
+                        color: AppThemes.systemGray5,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: exercises.isNotEmpty
@@ -614,7 +745,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                                   widthFactor: _progressAnimation.value,
                                   child: Container(
                                     decoration: BoxDecoration(
-                                      color: primaryColor,
+                                      color: AppThemes.primaryGreen,
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                   ),
@@ -634,7 +765,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                         margin: const EdgeInsets.only(right: 4),
                         child: Icon(
                           index < hearts ? Icons.favorite : Icons.favorite_border,
-                          color: index < hearts ? Colors.red : Colors.grey.shade300,
+                          color: index < hearts ? AppThemes.hearts : AppThemes.systemGray3,
                           size: 20,
                         ),
                       );
@@ -647,13 +778,16 @@ class _LessonDetailPageState extends State<LessonDetailPage>
             // Content
             Expanded(
               child: isLoading
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(color: primaryColor),
-                          SizedBox(height: 16),
-                          Text('Loading exercises...', style: TextStyle(color: Colors.grey)),
+                          CircularProgressIndicator(color: AppThemes.primaryGreen),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Loading exercises...', 
+                            style: TextStyle(color: AppThemes.lightSecondaryLabel)
+                          ),
                         ],
                       ),
                     )
@@ -662,13 +796,13 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                              Icon(Icons.error_outline, size: 64, color: AppThemes.hearts),
                               const SizedBox(height: 16),
                               Text('Error: $error', textAlign: TextAlign.center),
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _loadExercises,
-                                style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                                style: ElevatedButton.styleFrom(backgroundColor: AppThemes.primaryGreen),
                                 child: const Text('Try Again', style: TextStyle(color: Colors.white)),
                               ),
                             ],
@@ -682,8 +816,8 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                                   Container(
                                     width: 120,
                                     height: 120,
-                                    decoration: const BoxDecoration(
-                                      color: primaryColor,
+                                    decoration: BoxDecoration(
+                                      color: AppThemes.primaryGreen,
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -693,12 +827,12 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                                     ),
                                   ),
                                   const SizedBox(height: 24),
-                                  const Text(
+                                  Text(
                                     'Lesson Complete!',
                                     style: TextStyle(
                                       fontSize: 32,
                                       fontWeight: FontWeight.bold,
-                                      color: primaryColor,
+                                      color: AppThemes.primaryGreen,
                                     ),
                                   ),
                                   const SizedBox(height: 40),
@@ -712,7 +846,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                                         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                                       ),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: primaryColor,
+                                        backgroundColor: AppThemes.primaryGreen,
                                         padding: const EdgeInsets.symmetric(vertical: 16),
                                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                       ),

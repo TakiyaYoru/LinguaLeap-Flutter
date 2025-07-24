@@ -8,10 +8,6 @@ import 'package:lingualeap_app/pages/practice/reading_practice_page.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
 import '../pages/home_page.dart';
-import '../pages/course/courses_page.dart';
-import '../pages/course/course_detail_page.dart';
-import '../pages/course/unit_detail_page.dart';
-import '../pages/course/lesson_detail_page.dart';
 import '../pages/exercise/exercise_container_page.dart'; // ← NEW
 import '../pages/practice/practice_page.dart';
 import '../pages/practice/vocabulary_page.dart';
@@ -52,41 +48,6 @@ class AppRouter {
         builder: (context, state) => const RegisterPage(),
       ),
       
-      // Course detail route (no shell)
-      GoRoute(
-        path: courseDetail,
-        builder: (context, state) {
-          final courseId = state.pathParameters['courseId']!;
-          return CourseDetailPage(courseId: courseId);
-        },
-      ),
-      
-      // Unit detail route (no shell)
-      GoRoute(
-        path: unitDetail,
-        builder: (context, state) {
-          final unitId = state.pathParameters['unitId']!;
-          final unitTitle = state.uri.queryParameters['title'] ?? 'Unit';
-          return UnitDetailPage(
-            unitId: unitId,
-            unitTitle: unitTitle,
-          );
-        },
-      ),
-      
-      // Lesson detail route (no shell)
-      GoRoute(
-        path: lessonDetail,
-        builder: (context, state) {
-          final lessonId = state.pathParameters['lessonId']!;
-          final lessonTitle = state.uri.queryParameters['title'] ?? 'Lesson';
-          return LessonDetailPage(
-            lessonId: lessonId,
-            lessonTitle: lessonTitle,
-          );
-        },
-      ),
-
       // Reading practice route (no shell)
       GoRoute(
         path: '/reading-practice',
