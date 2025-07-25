@@ -3,6 +3,100 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import 'graphql_client.dart';
 import '../graphql/learnmap_queries.dart';
 
+// Import the new query
+const String getLearnmapWithContentQuery = '''
+  query GetLearnmapWithContent(\$courseId: ID!) {
+    learnmapWithContent(courseId: \$courseId) {
+      course {
+        id
+        title
+        description
+        level
+        category
+        color
+        estimatedDuration
+        totalUnits
+        totalLessons
+        isPremium
+        isPublished
+        publishedAt
+        createdAt
+        updatedAt
+      }
+      units {
+        id
+        title
+        description
+        courseId
+        theme
+        icon
+        color
+        totalLessons
+        totalExercises
+        estimatedDuration
+        isPremium
+        isPublished
+        xpReward
+        sortOrder
+        createdAt
+        updatedAt
+        lessons {
+          id
+          title
+          description
+          courseId
+          unitId
+          type
+          lesson_type
+          objective
+          icon
+          thumbnail
+          totalExercises
+          estimatedDuration
+          difficulty
+          isPremium
+          isPublished
+          xpReward
+          sortOrder
+          createdAt
+          updatedAt
+        }
+      }
+      userProgress {
+        _id
+        userId
+        courseId
+        hearts
+        lastHeartUpdate
+        unitProgress {
+          unitId
+          status
+          completedAt
+          lessonProgress {
+            lessonId
+            status
+            completedAt
+            exerciseProgress {
+              exerciseId
+              status
+              score
+              attempts
+              lastAttemptedAt
+              wrongAnswers
+            }
+          }
+        }
+        fastTrackHistory {
+          unitId
+          lessonIds
+          challengeAttemptId
+          completedAt
+        }
+      }
+    }
+  }
+''';
+
 class LearnmapService {
   static final GraphQLClient _client = GraphQLService.client;
 
@@ -199,6 +293,39 @@ class LearnmapService {
       }
     } catch (e) {
       print('❌ updateExerciseProgress exception: $e');
+      return null;
+    }
+  }
+
+  // ✅ NEW: Lấy learnmap với content data
+  static Future<Map<String, dynamic>?> getLearnmapWithContent(String courseId) async {
+    try {
+      print('📊 [LearnmapService] Fetching learnmap with content for course: $courseId');
+      
+      final result = await _client.query(QueryOptions(
+        document: gql(getLearnmapWithContentQuery),
+        variables: {'courseId': courseId},
+        fetchPolicy: FetchPolicy.networkOnly, // ✅ Always fetch fresh data
+      ));
+
+      if (result.hasException) {
+        print('❌ getLearnmapWithContent error: ${result.exception}');
+        return null;
+      }
+
+      final data = result.data?['learnmapWithContent'];
+      if (data != null) {
+        print('✅ [LearnmapService] Learnmap with content loaded successfully');
+        print('   - Course: ${data['course']?['title']}');
+        print('   - Units: ${data['units']?.length ?? 0}');
+        print('   - User Progress: ${data['userProgress'] != null ? 'Yes' : 'No'}');
+      } else {
+        print('⚠️ [LearnmapService] No learnmap with content found for course: $courseId');
+      }
+      
+      return data;
+    } catch (e) {
+      print('❌ getLearnmapWithContent exception: $e');
       return null;
     }
   }

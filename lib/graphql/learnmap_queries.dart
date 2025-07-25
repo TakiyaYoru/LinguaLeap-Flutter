@@ -1,5 +1,87 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
 
+// Query để lấy learnmap với content data
+const String getLearnmapWithContentQuery = '''
+  query GetLearnmapWithContent(\$courseId: ID!) {
+    learnmapWithContent(courseId: \$courseId) {
+      course {
+        id
+        title
+        description
+        level
+        category
+        color
+        estimatedDuration
+        totalUnits
+        totalLessons
+        isPremium
+        isPublished
+      }
+      units {
+        id
+        title
+        description
+        theme
+        icon
+        color
+        totalLessons
+        estimatedDuration
+        isPremium
+        isPublished
+        sortOrder
+        lessons {
+          id
+          title
+          description
+          type
+          lesson_type
+          objective
+          icon
+          thumbnail
+          totalExercises
+          estimatedDuration
+          difficulty
+          isPremium
+          isPublished
+          xpReward
+          sortOrder
+        }
+      }
+      userProgress {
+        _id
+        userId
+        courseId
+        hearts
+        lastHeartUpdate
+        unitProgress {
+          unitId
+          status
+          completedAt
+          lessonProgress {
+            lessonId
+            status
+            completedAt
+            exerciseProgress {
+              exerciseId
+              status
+              score
+              attempts
+              lastAttemptedAt
+              wrongAnswers
+            }
+          }
+        }
+        fastTrackHistory {
+          unitId
+          lessonIds
+          challengeAttemptId
+          completedAt
+        }
+      }
+    }
+  }
+''';
+
 // Query để lấy learnmap progress của user
 const String getUserLearnmapProgressQuery = '''
   query GetUserLearnmapProgress(\$courseId: ID!) {

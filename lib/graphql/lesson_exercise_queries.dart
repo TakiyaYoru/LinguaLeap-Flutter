@@ -181,6 +181,55 @@ class LessonExerciseQueries {
     }
   ''';
 
+  // Admin: Get unit lessons for reordering
+  static const String getUnitLessonsForAdmin = '''
+    query GetUnitLessonsForAdmin(\$unitId: ID!) {
+      getUnitLessonsForAdmin(unitId: \$unitId) {
+        success
+        message
+        lessons {
+          id
+          title
+          description
+          courseId
+          unitId
+          type
+          lesson_type
+          objective
+          icon
+          thumbnail
+          totalExercises
+          estimatedDuration
+          difficulty
+          isPremium
+          isPublished
+          xpReward
+          perfectScoreBonus
+          targetAccuracy
+          passThreshold
+          sortOrder
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  ''';
+
+  // Admin: Reorder lessons
+  static const String reorderLessons = '''
+    mutation ReorderLessons(\$unitId: ID!, \$lessonIds: [ID!]!) {
+      reorderLessons(unitId: \$unitId, lessonIds: \$lessonIds) {
+        success
+        message
+        lessons {
+          id
+          title
+          sortOrder
+        }
+      }
+    }
+  ''';
+
   // ===============================================
   // CONTENT CREATION MUTATIONS (For Admin)
   // ===============================================

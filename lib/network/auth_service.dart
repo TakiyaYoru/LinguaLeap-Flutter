@@ -140,4 +140,31 @@ class AuthService {
       return null;
     }
   }
+
+  // ✅ NEW: Check if current user is admin
+  static Future<bool> isAdmin() async {
+    try {
+      final user = await getCurrentUser();
+      if (user == null) return false;
+      
+      final role = user['role'] as String?;
+      return role == 'admin';
+    } catch (e) {
+      print('❌ Error checking admin status: $e');
+      return false;
+    }
+  }
+
+  // ✅ NEW: Get current user role
+  static Future<String?> getUserRole() async {
+    try {
+      final user = await getCurrentUser();
+      if (user == null) return null;
+      
+      return user['role'] as String?;
+    } catch (e) {
+      print('❌ Error getting user role: $e');
+      return null;
+    }
+  }
 }

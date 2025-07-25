@@ -94,6 +94,9 @@ class CourseModel {
   final int totalUnits;
   final int estimatedDuration;
   final String color;
+  final bool isPublished;
+  final String? publishedAt;
+  final List<String> learningObjectives;
 
   CourseModel({
     required this.id,
@@ -124,6 +127,9 @@ class CourseModel {
     this.totalUnits = 0,
     this.estimatedDuration = 0,
     this.color = '#40C4AA',
+    this.isPublished = false,
+    this.publishedAt,
+    this.learningObjectives = const [],
   });
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
@@ -170,6 +176,9 @@ class CourseModel {
       totalUnits: json['totalUnits'] ?? json['units']?.length ?? 0,
       estimatedDuration: json['estimatedDuration'] ?? json['estimatedHours'] * 60 ?? 0,
       color: json['color'] ?? json['colorValue'] ?? '#40C4AA',
+      isPublished: json['isPublished'] ?? false,
+      publishedAt: json['publishedAt'],
+      learningObjectives: List<String>.from(json['learningObjectives'] ?? []),
     );
   }
 
@@ -253,6 +262,8 @@ class CourseModel {
       'totalUnits': totalUnits,
       'estimatedDuration': estimatedDuration,
       'color': color,
+      'isPublished': isPublished,
+      'publishedAt': publishedAt,
     };
   }
 }

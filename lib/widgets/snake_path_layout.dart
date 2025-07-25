@@ -39,6 +39,12 @@ class SnakePathLayout extends StatelessWidget {
           ...lessons.asMap().entries.map((entry) {
             final index = entry.key;
             final lesson = entry.value;
+            
+            // Skip if lesson is null or invalid
+            if (lesson == null || lesson is! Map<String, dynamic>) {
+              return const SizedBox.shrink();
+            }
+            
             final position = lessonPositions[index];
             
             return Positioned(
@@ -136,7 +142,8 @@ class SnakePathLayout extends StatelessWidget {
 
   // Build individual lesson node
   Widget _buildLessonNode(Map<String, dynamic> lesson, int index, BuildContext context) {
-    final lessonId = lesson['lessonId'] as String;
+    // Handle both 'lessonId' and 'id' fields for compatibility
+    final lessonId = lesson['lessonId'] as String? ?? lesson['id'] as String? ?? 'unknown';
     final status = lesson['status'] ?? 'locked';
     final isCurrentLesson = status == 'unlocked' || status == 'in_progress';
     

@@ -3,7 +3,8 @@ import '../network/learnmap_service.dart';
 import '../models/gamification_model.dart';
 
 class LearnmapController extends ChangeNotifier {
-  Map<String, dynamic>? learnmap;
+  Map<String, dynamic>? learnmap; // User progress data
+  Map<String, dynamic>? contentData; // Course, units, lessons content
   GamificationData? gamificationData;
   bool isLoading = false;
   bool isInitializing = false;
@@ -17,39 +18,40 @@ class LearnmapController extends ChangeNotifier {
     notifyListeners();
     
     try {
-      print('🔄 Bắt đầu load learnmap cho course: $courseId');
+      print('🔄 [LearnmapController] Bắt đầu load learnmap với content cho course: $courseId');
       
-      // Thử lấy progress hiện tại
-      final data = await LearnmapService.getUserLearnmapProgress(courseId);
-      print('📊 getUserLearnmapProgress result: $data');
+      // Sử dụng method mới để lấy learnmap với content data
+      final data = await LearnmapService.getLearnmapWithContent(courseId);
+      print('📊 [LearnmapController] getLearnmapWithContent result: $data');
       
-      if (data == null) {
-        // Nếu chưa có progress, khởi tạo mới
-        print('🔄 Chưa có progress, bắt đầu khởi tạo...');
-        isInitializing = true;
-        notifyListeners();
+      if (data != null) {
+        // Lưu content data (course, units, lessons) - Convert to Map<String, dynamic>
+        contentData = {
+          'course': data['course'] as Map<String, dynamic>? ?? {},
+          'units': (data['units'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>(),
+        };
         
-        final newData = await LearnmapService.startCourseLearnmap(courseId);
-        print('📊 startCourseLearnmap result: $newData');
-        
-        if (newData != null) {
-          learnmap = newData;
-          _updateGamificationData(newData);
-          print('✅ Đã khởi tạo learnmap thành công cho course: $courseId');
+        // Lấy user progress từ data
+        final userProgress = data['userProgress'];
+        if (userProgress != null) {
+          learnmap = userProgress;
+          _updateGamificationData(userProgress);
+          print('✅ [LearnmapController] Đã load learnmap thành công cho course: $courseId');
+          print('   - Course: ${data['course']?['title']}');
+          print('   - Units: ${data['units']?.length ?? 0}');
+          print('   - Total Lessons: ${_getTotalLessons(data['units'])}');
+          print('   - User Progress: Yes');
         } else {
-          error = 'Không thể khởi tạo learnmap - mutation trả về null';
-          print('❌ startCourseLearnmap trả về null');
+          error = 'Không thể lấy user progress';
+          print('❌ [LearnmapController] User progress trả về null');
         }
-        isInitializing = false;
       } else {
-        // Nếu đã có progress, sử dụng dữ liệu hiện tại
-        learnmap = data;
-        _updateGamificationData(data);
-        print('✅ Đã load learnmap thành công cho course: $courseId');
+        error = 'Không thể load learnmap với content';
+        print('❌ [LearnmapController] getLearnmapWithContent trả về null');
       }
     } catch (e) {
       error = e.toString();
-      print('❌ loadLearnmap error: $e');
+      print('❌ [LearnmapController] loadLearnmap error: $e');
     }
     
     isLoading = false;
@@ -93,12 +95,27 @@ class LearnmapController extends ChangeNotifier {
 
   void reset() {
     learnmap = null;
+    contentData = null;
     gamificationData = null;
     isLoading = false;
     isInitializing = false;
     error = null;
     notifyListeners();
   }
+
+  // Helper method để đếm tổng số lessons
+  int _getTotalLessons(List<dynamic>? units) {
+    if (units == null) return 0;
+    int total = 0;
+    for (final unit in units) {
+      final lessons = unit['lessons'] as List<dynamic>? ?? [];
+      total += lessons.length;
+    }
+    return total;
+  }
+
+  // Getter để lấy content data
+  Map<String, dynamic>? get content => contentData;
 
   // Method để update hearts khi user làm sai exercise
   void loseHeart() {

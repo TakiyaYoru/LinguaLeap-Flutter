@@ -17,6 +17,9 @@ class GraphQLService {
   static GraphQLClient _createClient() {
     final HttpLink httpLink = HttpLink(
       AppConstants.graphqlEndpoint,
+      defaultHeaders: {
+        'Content-Type': 'application/json',
+      },
     );
     
     // Auth link để tự động thêm token vào header

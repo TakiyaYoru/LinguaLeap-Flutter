@@ -15,7 +15,7 @@ class LearnmapPage extends StatefulWidget {
   State<LearnmapPage> createState() => _LearnmapPageState();
 }
 
-class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMixin {
+class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMixin, WidgetsBindingObserver {
   String? selectedCourseId;
   List<Map<String, dynamic>> courses = [];
   bool isLoadingCourses = true;
@@ -33,6 +33,8 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
 
   // Course selector dropdown
   bool _showCourseDropdown = false;
+  
+  // Removed auto-refresh control
 
   // Unit gradient colors matching app theme
   final List<LinearGradient> unitGradients = [
@@ -56,6 +58,8 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     _unlockAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -87,11 +91,24 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _unlockAnimationController.dispose();
     _startBubbleAnimationController.dispose();
     _scrollController.dispose();
     controller?.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Removed auto refresh on app resume
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Removed auto refresh on navigation
   }
 
   void _onScroll() {
@@ -114,7 +131,10 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       error = null;
     });
     try {
+      print('🔄 [LearnmapPage] Loading courses...');
       final data = await CourseService.getAllCourses();
+      print('📥 [LearnmapPage] Received ${data?.length ?? 0} courses');
+      
       setState(() {
         courses = data ?? [];
         if (courses.isNotEmpty) {
@@ -124,13 +144,99 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
             orElse: () => courses.length >= 3 ? courses[2] : courses[0],
           );
           selectedCourseId = targetCourse['id'];
-          print('🎯 Selected course: ${targetCourse['title']} (ID: $selectedCourseId)');
+          print('🎯 [LearnmapPage] Selected course: ${targetCourse['title']} (ID: $selectedCourseId)');
         }
       });
     } catch (e) {
       setState(() { error = e.toString(); });
+      print('❌ [LearnmapPage] Error loading courses: $e');
     }
     setState(() { isLoadingCourses = false; });
+  }
+
+  Future<void> _refreshData() async {
+    print('🔄 [LearnmapPage] Refreshing all data...');
+    
+    // Refresh courses
+    await _loadCourses();
+    
+    // Refresh learnmap if course is selected
+    if (selectedCourseId != null && controller != null) {
+      print('🔄 [LearnmapPage] Refreshing learnmap for course: $selectedCourseId');
+      await controller!.loadLearnmap(selectedCourseId!);
+    }
+    
+    print('✅ [LearnmapPage] Refresh completed');
+  }
+
+  // Merge content data với progress data
+  List<Map<String, dynamic>> _mergeContentWithProgress(
+    List<dynamic> contentUnits, 
+    List<dynamic> userProgressUnits
+  ) {
+    final mergedUnits = <Map<String, dynamic>>[];
+    
+    for (final contentUnit in contentUnits) {
+      final contentUnitMap = contentUnit as Map<String, dynamic>;
+      final unitId = contentUnitMap['id'] as String;
+      final userProgressUnit = userProgressUnits.firstWhere(
+        (up) => up['unitId'] == unitId,
+        orElse: () => <String, dynamic>{},
+      );
+      
+      final contentLessons = contentUnitMap['lessons'] as List<dynamic>? ?? [];
+      final userProgressLessons = userProgressUnit['lessonProgress'] as List<dynamic>? ?? [];
+      
+      // Merge lessons với progress
+      final mergedLessons = contentLessons.map((contentLesson) {
+        final contentLessonMap = contentLesson as Map<String, dynamic>;
+        final lessonId = contentLessonMap['id'] as String;
+        final userProgressLesson = userProgressLessons.firstWhere(
+          (upl) => upl['lessonId'] == lessonId,
+          orElse: () => <String, dynamic>{},
+        );
+        
+        return {
+          ...contentLessonMap,
+          'lessonId': lessonId, // Add lessonId for compatibility
+          'status': userProgressLesson['status'] ?? 'locked',
+          'completedAt': userProgressLesson['completedAt'],
+          'exerciseProgress': userProgressLesson['exerciseProgress'] ?? [],
+        };
+      }).toList();
+      
+      mergedUnits.add({
+        ...contentUnitMap,
+        'unitId': unitId,
+        'status': userProgressUnit['status'] ?? 'locked',
+        'completedAt': userProgressUnit['completedAt'],
+        'lessonProgress': mergedLessons,
+      });
+    }
+    
+    print('📊 [LearnmapPage] Merged ${mergedUnits.length} units with ${_getTotalLessons(mergedUnits)} lessons');
+    
+    // Debug: Check lesson data structure
+    for (int i = 0; i < mergedUnits.length; i++) {
+      final unit = mergedUnits[i];
+      final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+      print('📋 [LearnmapPage] Unit $i: ${lessons.length} lessons');
+      for (int j = 0; j < lessons.length; j++) {
+        final lesson = lessons[j] as Map<String, dynamic>;
+        print('   Lesson $j: id=${lesson['id']}, lessonId=${lesson['lessonId']}, status=${lesson['status']}');
+      }
+    }
+    
+    return mergedUnits;
+  }
+
+  int _getTotalLessons(List<Map<String, dynamic>> units) {
+    int total = 0;
+    for (final unit in units) {
+      final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+      total += lessons.length;
+    }
+    return total;
   }
 
   void _navigateToLesson(String unitId, String lessonId, String lessonStatus) {
@@ -209,6 +315,15 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
           style: TextStyle(color: AppThemes.lightLabel),
         ),
         actions: [
+          // Refresh button
+          IconButton(
+            icon: Icon(Icons.refresh, color: AppThemes.primaryGreen),
+            onPressed: () async {
+              print('🔄 [LearnmapPage] Manual refresh triggered');
+              await _refreshData();
+            },
+            tooltip: 'Refresh',
+          ),
           // Course selector dropdown
           PopupMenuButton<String>(
             icon: Icon(Icons.school, color: AppThemes.primaryGreen),
@@ -251,11 +366,14 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
         ],
       ),
       body: SafeArea(
-        child: Column(
-          children: [
-            if (selectedCourseId != null)
-              Expanded(child: _buildLearnmapContent()),
-          ],
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: Column(
+            children: [
+              if (selectedCourseId != null)
+                Expanded(child: _buildLearnmapContent()),
+            ],
+          ),
         ),
       ),
     );
@@ -309,17 +427,27 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
         }
         
         final learnmap = controller!.learnmap;
-        if (learnmap == null) {
+        final content = controller!.content;
+        
+        if (learnmap == null || content == null) {
           return const Center(
             child: Text('No learning path data available'),
           );
         }
         
-        final units = learnmap['unitProgress'] as List<dynamic>? ?? [];
+        // Sử dụng content data thay vì progress data
+        final units = content['units'] as List<dynamic>? ?? [];
+        final userProgress = learnmap['unitProgress'] as List<dynamic>? ?? [];
+        
+        print('📊 [LearnmapPage] Content units: ${units.length}');
+        print('📊 [LearnmapPage] User progress units: ${userProgress.length}');
+        
+        // Merge content với progress để có đầy đủ data
+        final mergedUnits = _mergeContentWithProgress(units, userProgress);
         
         // Find current lesson position for auto-scroll
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          _findAndScrollToCurrentLesson(units);
+          _findAndScrollToCurrentLesson(mergedUnits);
         });
         
         return Stack(
@@ -333,7 +461,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _StickyUnitHeaderDelegate(
-                    units: units,
+                    units: mergedUnits,
                     scrollController: _scrollController,
                   ),
                 ),
@@ -344,14 +472,14 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, unitIndex) {
-                        final unit = units[unitIndex];
+                        final unit = mergedUnits[unitIndex];
                         final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
                         final unitId = unit['unitId'] as String;
                         
                         // Get previous unit's last lesson position for smooth connection
                         Offset? previousUnitLastPosition;
                         if (unitIndex > 0) {
-                          final prevUnit = units[unitIndex - 1];
+                          final prevUnit = mergedUnits[unitIndex - 1];
                           final prevLessons = prevUnit['lessonProgress'] as List<dynamic>? ?? [];
                           if (prevLessons.isNotEmpty) {
                             final screenWidth = MediaQuery.of(context).size.width;
@@ -386,12 +514,12 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
                             const SizedBox(height: 40),
                             
                             // Unit connector (except for last unit)
-                            if (unitIndex < units.length - 1)
-                              _buildUnitConnector(units[unitIndex + 1], unitIndex + 2),
+                            if (unitIndex < mergedUnits.length - 1)
+                              _buildUnitConnector(mergedUnits[unitIndex + 1], unitIndex + 2),
                           ],
                         );
                       },
-                      childCount: units.length,
+                      childCount: mergedUnits.length,
                     ),
                   ),
                 ),
