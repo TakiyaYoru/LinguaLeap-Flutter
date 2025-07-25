@@ -14,6 +14,7 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
 
+  // ✅ ENHANCED: Logout with proper cache clearing
   Future<void> _logout(BuildContext context) async {
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
@@ -36,9 +37,32 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (confirmed == true) {
-      await AuthService.clearToken();
+      // Show loading indicator
       if (context.mounted) {
-        context.go('/login');
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      try {
+        // ✅ ENHANCED: Use AuthService.logout() which includes cache reset
+        await AuthService.logout(context);
+      } catch (e) {
+        // Handle any logout errors
+        print('❌ Logout error: $e');
+        if (context.mounted) {
+          Navigator.of(context).pop(); // Close loading dialog
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lỗi đăng xuất: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
@@ -94,170 +118,114 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeManager = context.watch<ThemeManager>();
+    
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppBar(
         title: const Text('Cài đặt'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Account Section
-          _buildSection(
-            'Tài khoản',
-            [
-              _buildSettingItem(
-                icon: Icons.person_outline,
-                title: 'Thông tin cá nhân',
-                subtitle: 'Chỉnh sửa hồ sơ và thông tin',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.security,
-                title: 'Bảo mật',
-                subtitle: 'Đổi mật khẩu, xác thực 2 bước',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.email_outlined,
-                title: 'Email & Thông báo',
-                subtitle: 'Cài đặt thông báo và email',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-            ],
+          _buildSectionHeader('Tài khoản'),
+          _buildSettingsTile(
+            icon: Icons.person_outline,
+            title: 'Thông tin cá nhân',
+            subtitle: 'Quản lý thông tin tài khoản',
+            onTap: () {
+              // Navigate to profile edit
+              context.push('/profile');
+            },
+          ),
+          _buildSettingsTile(
+            icon: Icons.security,
+            title: 'Bảo mật',
+            subtitle: 'Mật khẩu và xác thực',
+            onTap: () {
+              // Navigate to security settings
+            },
           ),
           
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+          
+          // Appearance Section
+          _buildSectionHeader('Giao diện'),
+          _buildSettingsTile(
+            icon: Icons.palette_outlined,
+            title: 'Chủ đề',
+            subtitle: _getThemeText(themeManager.themeMode),
+            onTap: () => _showThemeDialog(context),
+          ),
+          _buildSettingsTile(
+            icon: Icons.language,
+            title: 'Ngôn ngữ',
+            subtitle: 'Tiếng Việt',
+            onTap: () {
+              // Navigate to language settings
+            },
+          ),
+          
+          const SizedBox(height: 20),
           
           // Learning Section
-          _buildSection(
-            'Học tập',
-            [
-              _buildSettingItem(
-                icon: Icons.schedule,
-                title: 'Nhắc nhở học tập',
-                subtitle: 'Thiết lập thời gian học hàng ngày',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.flag_outlined,
-                title: 'Mục tiêu học tập',
-                subtitle: 'Thiết lập mục tiêu XP hàng ngày',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.language,
-                title: 'Ngôn ngữ',
-                subtitle: 'Tiếng Việt',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-            ],
+          _buildSectionHeader('Học tập'),
+          _buildSettingsTile(
+            icon: Icons.notifications_outlined,
+            title: 'Thông báo',
+            subtitle: 'Nhắc nhở học tập hàng ngày',
+            onTap: () {
+              // Navigate to notification settings
+            },
+          ),
+          _buildSettingsTile(
+            icon: Icons.backup_outlined,
+            title: 'Sao lưu dữ liệu',
+            subtitle: 'Đồng bộ tiến trình học tập',
+            onTap: () {
+              // Navigate to backup settings
+            },
           ),
           
-          const SizedBox(height: 24),
-          
-          // App Section
-          _buildSection(
-            'Ứng dụng',
-            [
-              _buildSettingItem(
-                icon: Icons.volume_up_outlined,
-                title: 'Âm thanh',
-                subtitle: 'Hiệu ứng âm thanh và nhạc nền',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.dark_mode_outlined,
-                title: 'Giao diện',
-                subtitle: context.watch<ThemeManager>().themeModeText,
-                onTap: () => _showThemeDialog(context),
-              ),
-              _buildSettingItem(
-                icon: Icons.download_outlined,
-                title: 'Tải xuống',
-                subtitle: 'Quản lý nội dung offline',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           
           // Support Section
-          _buildSection(
-            'Hỗ trợ',
-            [
-              _buildSettingItem(
-                icon: Icons.help_outline,
-                title: 'Trung tâm trợ giúp',
-                subtitle: 'FAQ và hướng dẫn sử dụng',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.contact_support_outlined,
-                title: 'Liên hệ hỗ trợ',
-                subtitle: 'Gửi phản hồi và báo lỗi',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tính năng đang phát triển')),
-                  );
-                },
-              ),
-              _buildSettingItem(
-                icon: Icons.info_outline,
-                title: 'Về ứng dụng',
-                subtitle: 'Phiên bản 1.0.0',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('LinguaLeap v1.0.0')),
-                  );
-                },
-              ),
-            ],
+          _buildSectionHeader('Hỗ trợ'),
+          _buildSettingsTile(
+            icon: Icons.help_outline,
+            title: 'Trợ giúp',
+            subtitle: 'FAQ và hướng dẫn sử dụng',
+            onTap: () {
+              // Navigate to help
+            },
+          ),
+          _buildSettingsTile(
+            icon: Icons.feedback_outlined,
+            title: 'Phản hồi',
+            subtitle: 'Góp ý cải thiện ứng dụng',
+            onTap: () {
+              // Navigate to feedback
+            },
+          ),
+          _buildSettingsTile(
+            icon: Icons.info_outline,
+            title: 'Về LinguaLeap',
+            subtitle: 'Phiên bản 1.0.0',
+            onTap: () {
+              // Show about dialog
+            },
           ),
           
-          const SizedBox(height: 32),
+          const SizedBox(height: 30),
           
           // Logout Button
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8),
-            child: ElevatedButton(
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 20),
+            child: ElevatedButton.icon(
               onPressed: () => _logout(context),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
@@ -267,134 +235,76 @@ class _SettingsPageState extends State<SettingsPage> {
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
+              icon: const Icon(Icons.logout),
+              label: const Text(
                 'Đăng xuất',
                 style: TextStyle(
                   fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
           
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildSection(String title, List<Widget> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 16, bottom: 12),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.grey,
-            ),
-          ),
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, bottom: 8, top: 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: items
-                .asMap()
-                .entries
-                .map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  return Column(
-                    children: [
-                      item,
-                      if (index < items.length - 1)
-                        Divider(
-                          height: 1,
-                          color: Colors.grey.shade200,
-                          indent: 60,
-                        ),
-                    ],
-                  );
-                })
-                .toList(),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildSettingItem({
+  Widget _buildSettingsTile({
     required IconData icon,
     required String title,
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  icon,
-                  color: Colors.blue,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey.shade400,
-              ),
-            ],
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
           ),
         ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+          ),
+        ),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        onTap: onTap,
       ),
     );
+  }
+
+  String _getThemeText(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Sáng';
+      case ThemeMode.dark:
+        return 'Tối';
+      case ThemeMode.system:
+        return 'Theo hệ thống';
+    }
   }
 }

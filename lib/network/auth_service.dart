@@ -1,17 +1,20 @@
-// lib/core/network/auth_service.dart
+// lib/network/auth_service.dart
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'graphql_client.dart';
 import '../graphql/auth_queries.dart';
 import '../constants/app_constants.dart';
-import 'graphql_client.dart';
 
 class AuthService {
   // Test login với GraphQL
   static Future<Map<String, dynamic>?> testLogin(String email, String password) async {
     try {
-      print('🔐 Attempting login for: $email');
+      print(' Attempting login for: $email');
       print('🔗 GraphQL endpoint: ${AppConstants.graphqlEndpoint}');
-      
+      print('📤 Sending login mutation...');
+
       final MutationOptions options = MutationOptions(
         document: gql(AuthQueries.login),
         variables: {
@@ -22,7 +25,6 @@ class AuthService {
         },
       );
 
-      print('📤 Sending login mutation...');
       final QueryResult result = await GraphQLService.client.mutate(options);
       
       print('📥 Login result: ${result.data}');
@@ -30,7 +32,6 @@ class AuthService {
       
       if (result.hasException) {
         print('❌ Login exceptions: ${result.exception}');
-        print('❌ Login exception type: ${result.exception.runtimeType}');
         throw Exception(result.exception.toString());
       }
 
@@ -86,10 +87,30 @@ class AuthService {
     return prefs.getString(AppConstants.tokenKey);
   }
 
-  // Clear token (logout)
+  // ✅ ENHANCED: Clear token AND reset GraphQL client
   static Future<void> clearToken() async {
+    print('🚪 [AuthService] Starting logout process...');
+    
+    // 1. Clear token from SharedPreferences
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(AppConstants.tokenKey);
+    print('✅ [AuthService] Token cleared from SharedPreferences');
+    
+    // 2. Reset GraphQL client and clear cache
+    GraphQLService.resetClient();
+    
+    // 3. Optional: Clear any other cached data if needed
+    // await prefs.clear(); // ← Use này nếu muốn clear toàn bộ SharedPreferences
+    
+    print('✅ [AuthService] Logout completed - all caches cleared');
+  }
+
+  // ✅ NEW: Logout and navigate
+  static Future<void> logout(BuildContext context) async {
+    await clearToken();
+    if (context.mounted) {
+      context.go('/login');
+    }
   }
 
   // Get current user từ backend
@@ -115,7 +136,7 @@ class AuthService {
 
       return result.data?['me'];
     } catch (e) {
-      print('getCurrentUser error: $e');
+      print('getCurrentUser exception: $e');
       return null;
     }
   }

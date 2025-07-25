@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../network/auth_service.dart';
+import '../../network/graphql_client.dart'; // ✅ NEW: Import for cache clear
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -24,8 +25,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _handleLogin() async {
-    // Luôn clear token trước khi login mới
-    await AuthService.clearToken();
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       setState(() {
         _message = 'Vui lòng nhập email và password';
@@ -39,6 +38,9 @@ class _LoginPageState extends State<LoginPage> {
     });
 
     try {
+      // ✅ ENHANCED: Clear token AND reset GraphQL client before login
+      await AuthService.clearToken(); // This now includes GraphQL cache reset
+      
       final result = await AuthService.testLogin(
         _emailController.text.trim(),
         _passwordController.text,
@@ -48,9 +50,14 @@ class _LoginPageState extends State<LoginPage> {
         final token = result['token'];
         if (token != null) {
           await AuthService.saveToken(token);
+          
+          // ✅ NEW: Clear cache after successful login to ensure fresh data
+          GraphQLService.clearCache();
+          
           setState(() {
             _message = 'Đăng nhập thành công! ✅';
           });
+          
           // Delay một chút để user thấy message
           await Future.delayed(const Duration(seconds: 1));
           if (mounted) {
@@ -63,137 +70,137 @@ class _LoginPageState extends State<LoginPage> {
         }
       } else {
         setState(() {
-          _message = 'Đăng nhập thất bại. Kiểm tra email/password ❌';
+          _message = 'Đăng nhập thất bại. Kiểm tra email/password.';
         });
       }
     } catch (e) {
       setState(() {
-        _message = 'Lỗi: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
+        _message = 'Lỗi kết nối: $e';
       });
     }
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo placeholder
-              Container(
-                height: 100,
-                width: 100,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.school,
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  size: 50,
-                ),
+      appBar: AppBar(
+        title: const Text('Đăng nhập'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Logo or App name
+            const Icon(
+              Icons.language,
+              size: 80,
+              color: Colors.blue,
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'LinguaLeap',
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.blue,
               ),
-              const SizedBox(height: 32),
-              
-              // Title
-              Text(
-                'LinguaLeap',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
+            ),
+            const SizedBox(height: 48),
+            
+            // Email TextField
+            TextField(
+              controller: _emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.email),
               ),
-              Text(
-                'Learn English the smart way',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                ),
+              keyboardType: TextInputType.emailAddress,
+              autocorrect: false,
+            ),
+            const SizedBox(height: 16),
+            
+            // Password TextField
+            TextField(
+              controller: _passwordController,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock),
               ),
-              const SizedBox(height: 48),
-              
-              // Email field
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email),
+              obscureText: true,
+            ),
+            const SizedBox(height: 24),
+            
+            // Login Button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              // Password field
-              TextField(
-                controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              const SizedBox(height: 8),
-              
-              // Message
-              if (_message.isNotEmpty)
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(
-                    color: _message.contains('✅') 
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
-                      : Theme.of(context).colorScheme.error.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: _message.contains('✅') 
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                  child: Text(
-                    _message,
-                    style: TextStyle(
-                      color: _message.contains('✅') 
-                        ? Theme.of(context).colorScheme.primary
-                        : Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              
-              // Login button
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  child: _isLoading 
-                    ? const CircularProgressIndicator(color: Colors.white)
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
                     : const Text(
-                        'Login',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        'Đăng nhập',
+                        style: TextStyle(fontSize: 16),
                       ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Message
+            if (_message.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _message.contains('✅') 
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _message.contains('✅') 
+                        ? Colors.green
+                        : Colors.red,
+                  ),
+                ),
+                child: Text(
+                  _message,
+                  style: TextStyle(
+                    color: _message.contains('✅') 
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 16),
-              
-              // Register link
-              TextButton(
-                onPressed: () {
-                  context.go('/register');
-                },
-                child: const Text('Don\'t have an account? Sign up'),
-              ),
-            ],
-          ),
+            const SizedBox(height: 24),
+            
+            // Register link
+            TextButton(
+              onPressed: () => context.push('/register'),
+              child: const Text('Chưa có tài khoản? Đăng ký ngay'),
+            ),
+          ],
         ),
       ),
     );

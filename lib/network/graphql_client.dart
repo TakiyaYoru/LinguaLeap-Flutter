@@ -1,4 +1,4 @@
-// lib/core/network/graphql_client.dart
+// lib/network/graphql_client.dart
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/app_constants.dart';
@@ -8,32 +8,52 @@ class GraphQLService {
   
   static GraphQLClient get client {
     if (_client == null) {
-      final HttpLink httpLink = HttpLink(
-        AppConstants.graphqlEndpoint,
-      );
-      
-      // Auth link để tự động thêm token vào header
-      final AuthLink authLink = AuthLink(
-        getToken: () async {
-          final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString(AppConstants.tokenKey);
-          print('🔐 [GraphQLClient] Token from SharedPreferences: ${token != null ? 'Found' : 'Not found'}');
-          if (token != null) {
-            print('🔐 [GraphQLClient] Token length: ${token.length}');
-            print('🔐 [GraphQLClient] Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
-          }
-          return token != null ? 'Bearer $token' : null;
-        },
-      );
-      
-      final Link link = authLink.concat(httpLink);
-      
-      _client = GraphQLClient(
-        link: link,
-        cache: GraphQLCache(store: InMemoryStore()),
-      );
+      _client = _createClient();
     }
     return _client!;
+  }
+  
+  // ✅ NEW: Create fresh client
+  static GraphQLClient _createClient() {
+    final HttpLink httpLink = HttpLink(
+      AppConstants.graphqlEndpoint,
+    );
+    
+    // Auth link để tự động thêm token vào header
+    final AuthLink authLink = AuthLink(
+      getToken: () async {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString(AppConstants.tokenKey);
+        print('🔐 [GraphQLClient] Token from SharedPreferences: ${token != null ? 'Found' : 'Not found'}');
+        if (token != null) {
+          print('🔐 [GraphQLClient] Token length: ${token.length}');
+          print('🔐 [GraphQLClient] Token preview: ${token.substring(0, token.length > 20 ? 20 : token.length)}...');
+        }
+        return token != null ? 'Bearer $token' : null;
+      },
+    );
+    
+    final Link link = authLink.concat(httpLink);
+    
+    return GraphQLClient(
+      link: link,
+      cache: GraphQLCache(store: InMemoryStore()),
+    );
+  }
+  
+  // ✅ NEW: Reset client và clear cache
+  static void resetClient() {
+    print('🔄 [GraphQLService] Resetting client and clearing cache...');
+    _client?.cache.store.reset();
+    _client = null;
+    print('✅ [GraphQLService] Client reset completed');
+  }
+  
+  // ✅ NEW: Clear cache only (không reset client)
+  static void clearCache() {
+    print('🧹 [GraphQLService] Clearing GraphQL cache...');
+    _client?.cache.store.reset();
+    print('✅ [GraphQLService] Cache cleared');
   }
   
   // Test query đơn giản
