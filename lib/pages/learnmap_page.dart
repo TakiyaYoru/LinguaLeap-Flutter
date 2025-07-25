@@ -904,3 +904,131 @@ class _StickyUnitHeaderWidgetState extends State<_StickyUnitHeaderWidget> {
     );
   }
 }
+    
+    for (int i = 0; i < widget.units.length; i++) {
+      final lessons = widget.units[i]['lessonProgress'] as List<dynamic>? ?? [];
+      
+      // Calculate height for this unit's snake path
+      double unitHeight = unitSpacing + (lessons.length * lessonVerticalSpacing) + 120.0; // Snake path height + margin
+      
+      // Add unit connector height (except for last unit)
+      if (i < widget.units.length - 1) {
+        unitHeight += unitConnectorHeight;
+      }
+      
+      // Check if current scroll position is within this unit
+      if (scrollOffset < accumulatedHeight + unitHeight) {
+        return i;
+      }
+      
+      accumulatedHeight += unitHeight;
+    }
+    
+    // If scrolled past all units, return the last unit
+    return widget.units.length - 1;
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    if (widget.units.isEmpty || currentUnitIndex >= widget.units.length) {
+      return Container(
+        height: 80,
+        color: AppThemes.lightGroupedBackground,
+      );
+    }
+    
+    final unit = widget.units[currentUnitIndex];
+    final unitNumber = currentUnitIndex + 1;
+    final lessons = unit['lessonProgress'] as List<dynamic>? ?? [];
+    final completedLessons = lessons.where((l) => l['status'] == 'completed').length;
+    
+    // Unit colors matching app theme
+    final List<Color> unitColors = [
+      AppThemes.primaryGreen, // Unit 1
+      AppThemes.systemBlue,   // Unit 2
+      AppThemes.systemOrange, // Unit 3
+    ];
+    
+    final color = unitColors[(unitNumber - 1) % unitColors.length];
+    
+    return Stack(
+      children: [
+        // Bottom shadow block
+        Positioned(
+          bottom: -4,
+          left: 20,
+          right: 20,
+          child: Container(
+            height: 4,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        
+        // Main box
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              // Unit info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      'SECTION 1, UNIT $unitNumber',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      unit['title'] ?? 'Unit $unitNumber',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Menu icon
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.more_horiz,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}

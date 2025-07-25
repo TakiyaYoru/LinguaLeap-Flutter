@@ -267,3 +267,14 @@ class CourseModel {
     };
   }
 }
+      'createdAt': createdAt,
+      'updatedAt': updatedAt,
+      'challengeTest': challengeTest?.toJson(),
+      'totalUnits': totalUnits,
+      'estimatedDuration': estimatedDuration,
+      'color': color,
+      'isPublished': isPublished,
+      'publishedAt': publishedAt,
+    };
+  }
+}

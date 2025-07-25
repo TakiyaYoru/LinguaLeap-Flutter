@@ -258,3 +258,85 @@ const String updateExerciseProgressMutation = '''
     }
   }
 '''; 
+        hearts
+        lastHeartUpdate
+        unitProgress {
+          unitId
+          status
+          completedAt
+          lessonProgress {
+            lessonId
+            status
+            completedAt
+            exerciseProgress {
+              exerciseId
+              status
+              score
+              attempts
+              lastAttemptedAt
+              wrongAnswers
+            }
+          }
+        }
+        fastTrackHistory {
+          unitId
+          lessonIds
+          challengeAttemptId
+          completedAt
+        }
+      }
+    }
+  }
+''';
+
+// Query để lấy exercises của lesson
+const String getExercisesByLessonQuery = '''
+  query GetExercisesByLesson(\$lessonId: ID!) {
+    getExercisesByLesson(lessonId: \$lessonId) {
+      success
+      message
+      exercises {
+        _id
+        title
+        instruction
+        type
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        feedback {
+          correct
+          incorrect
+          hint
+        }
+        timeLimit
+        estimatedTime
+        xpReward
+        sortOrder
+      }
+    }
+  }
+''';
+
+// Mutation để cập nhật exercise progress
+const String updateExerciseProgressMutation = '''
+  mutation UpdateExerciseProgress(\$lessonId: ID!, \$exerciseProgressInput: ExerciseProgressInput!) {
+    updateExerciseProgress(lessonId: \$lessonId, exerciseProgressInput: \$exerciseProgressInput) {
+      success
+      message
+      exerciseProgress {
+        exerciseId
+        status
+        score
+        attempts
+        lastAttemptedAt
+        wrongAnswers
+      }
+    }
+  }
+'''; 

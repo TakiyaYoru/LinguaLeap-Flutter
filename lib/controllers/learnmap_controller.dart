@@ -202,3 +202,20 @@ class LearnmapController extends ChangeNotifier {
     }
   }
 } 
+        _updateGamificationData(result);
+        print('✅ Lesson progress updated: $lessonId -> $status');
+        
+        // Add XP và coins khi hoàn thành lesson
+        if (status == 'completed') {
+          addXP(50);
+          addCoins(10);
+        }
+      } else {
+        print('❌ updateLearnmapProgress returned null');
+      }
+    } catch (e) {
+      print('❌ Update lesson progress error: $e');
+      // Không throw error để tránh crash app
+    }
+  }
+} 
