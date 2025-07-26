@@ -132,6 +132,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     'comprehension',
   ];
 
+
+
   @override
   void initState() {
     super.initState();
@@ -349,9 +351,9 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       final exerciseData = {
         'title': _titleController.text.trim(),
         'instruction': _instructionController.text.trim(),
-        'courseId': widget.courseId,
-        'unitId': widget.unitId,
-        'lessonId': widget.lessonId,
+        'courseId': widget.courseId?.toString(),
+        'unitId': widget.unitId?.toString(),
+        'lessonId': widget.lessonId?.toString(),
         'type': _selectedType,
         'skill_focus': [_selectedSkillFocus],
         'question': {
@@ -476,7 +478,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     const SizedBox(height: 16),
                     
                     // AI Generation Section
-                    if (_selectedType == 'multiple_choice') ...[
+                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank') ...[
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -500,10 +502,10 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                               const SizedBox(height: 16),
                               TextFormField(
                                 controller: _aiContextController,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'AI Context/Idea',
-                                  hintText: 'Ví dụ: "Tạo câu hỏi về số đếm tiếng Anh", "Bài tập về màu sắc cơ bản", "Câu hỏi về chào hỏi"',
-                                  border: OutlineInputBorder(),
+                                  hintText: _getAIHintText(),
+                                  border: const OutlineInputBorder(),
                                 ),
                                 maxLines: 3,
                               ),
@@ -548,9 +550,14 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                       onChanged: (value) {
                         setState(() {
                           _selectedType = value!;
+                          // Reset skill focus to first available option for new type
+                          final availableSkills = _getSkillFocusOptions();
+                          _selectedSkillFocus = availableSkills.isNotEmpty ? availableSkills.first : '';
                         });
                       },
                     ),
+
+
                     const SizedBox(height: 16),
                     
                     Row(
@@ -585,7 +592,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                               labelText: 'Skill Focus',
                               border: OutlineInputBorder(),
                             ),
-                            items: _skillFocuses.map((skill) {
+                            items: _getSkillFocusOptions().map((skill) {
                               return DropdownMenuItem(
                                 value: skill,
                                 child: Text(skill.toUpperCase()),
@@ -682,9 +689,10 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     
                     TextFormField(
                       controller: _questionTextController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Question Text *',
-                        border: OutlineInputBorder(),
+                        hintText: _getQuestionHintText(),
+                        border: const OutlineInputBorder(),
                       ),
                       maxLines: 3,
                       validator: (value) {
@@ -696,31 +704,39 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     ),
                     const SizedBox(height: 16),
                     
-                    TextFormField(
-                      controller: _audioUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Audio URL (optional)',
-                        border: OutlineInputBorder(),
+                    // Dynamic Audio/Image/Video fields based on skill focus
+                    if (_shouldShowAudioField()) ...[
+                      TextFormField(
+                        controller: _audioUrlController,
+                        decoration: InputDecoration(
+                          labelText: _getAudioLabelText(),
+                          border: const OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
                     
-                    TextFormField(
-                      controller: _imageUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Image URL (optional)',
-                        border: OutlineInputBorder(),
+                    if (_shouldShowImageField()) ...[
+                      TextFormField(
+                        controller: _imageUrlController,
+                        decoration: const InputDecoration(
+                          labelText: 'Image URL (optional)',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
                     
-                    TextFormField(
-                      controller: _videoUrlController,
-                      decoration: const InputDecoration(
-                        labelText: 'Video URL (optional)',
-                        border: OutlineInputBorder(),
+                    if (_shouldShowVideoField()) ...[
+                      TextFormField(
+                        controller: _videoUrlController,
+                        decoration: const InputDecoration(
+                          labelText: 'Video URL (optional)',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                    ],
                     const SizedBox(height: 16),
 
                     // Exercise Specific Content
@@ -1270,6 +1286,127 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     }
   }
 
+  String _getAIHintText() {
+    if (_selectedType == 'multiple_choice') {
+      return 'Ví dụ: "Tạo câu hỏi về số đếm tiếng Anh", "Bài tập về màu sắc cơ bản", "Câu hỏi về chào hỏi"';
+    } else if (_selectedType == 'fill_blank') {
+      if (_selectedSkillFocus.isEmpty) {
+        return 'Ví dụ: "Tạo câu điền từ về chào hỏi", "Bài tập điền từ về số đếm", "Câu điền từ về màu sắc"';
+      } else {
+        return 'Ví dụ: "Tạo bài tập điền từ tập trung vào $_selectedSkillFocus", "Câu điền từ về chào hỏi với focus $_selectedSkillFocus"';
+      }
+    }
+    return 'Nhập ý tưởng cho bài tập...';
+  }
+
+  List<String> _getSkillFocusOptions() {
+    switch (_selectedType) {
+      case 'fill_blank':
+        return ['vocabulary', 'listening', 'reading', 'grammar', 'pronunciation'];
+      case 'multiple_choice':
+        return ['vocabulary', 'grammar', 'comprehension'];
+      case 'listening':
+        return ['listening', 'pronunciation', 'comprehension'];
+      case 'speaking':
+        return ['speaking', 'pronunciation', 'fluency'];
+      case 'reading':
+        return ['reading', 'comprehension', 'vocabulary'];
+      case 'writing':
+        return ['writing', 'grammar', 'vocabulary'];
+      case 'translation':
+        return ['vocabulary', 'grammar', 'comprehension'];
+      case 'word_matching':
+        return ['vocabulary', 'comprehension'];
+      case 'sentence_building':
+        return ['grammar', 'vocabulary', 'syntax'];
+      case 'true_false':
+        return ['comprehension', 'vocabulary', 'grammar'];
+      case 'drag_drop':
+        return ['vocabulary', 'grammar', 'comprehension'];
+      case 'listen_choose':
+        return ['listening', 'comprehension', 'pronunciation'];
+      case 'speak_repeat':
+        return ['speaking', 'pronunciation', 'fluency'];
+      default:
+        return _skillFocuses;
+    }
+  }
+
+  String _getQuestionHintText() {
+    if (_selectedType == 'fill_blank') {
+      switch (_selectedSkillFocus) {
+        case 'vocabulary':
+          return 'Ví dụ: "Điền từ vào chỗ trống theo từ vựng"';
+        case 'listening':
+          return 'Ví dụ: "Điền từ vào chỗ trống, hãy nghe audio"';
+        case 'reading':
+          return 'Ví dụ: "Điền từ vào chỗ trống trong đoạn văn"';
+        case 'grammar':
+          return 'Ví dụ: "Điền từ vào chỗ trống theo ngữ pháp"';
+        case 'pronunciation':
+          return 'Ví dụ: "Điền từ vào chỗ trống và phát âm"';
+        default:
+          return 'Nhập câu hỏi cho bài tập...';
+      }
+    }
+    return 'Nhập câu hỏi cho bài tập...';
+  }
+
+  bool _shouldShowAudioField() {
+    if (_selectedType == 'fill_blank') {
+      return _selectedSkillFocus == 'listening' || _selectedSkillFocus == 'pronunciation';
+    }
+    return true; // Show for other exercise types
+  }
+
+  bool _shouldShowImageField() {
+    if (_selectedType == 'fill_blank') {
+      return false; // Hide for all fill_blank skills
+    }
+    return true; // Show for other exercise types
+  }
+
+  bool _shouldShowVideoField() {
+    if (_selectedType == 'fill_blank') {
+      return false; // Hide for all fill_blank skills
+    }
+    return true; // Show for other exercise types
+  }
+
+  String _getAudioLabelText() {
+    if (_selectedType == 'fill_blank') {
+      switch (_selectedSkillFocus) {
+        case 'listening':
+          return 'Audio URL (required) - Audio để nghe';
+        case 'pronunciation':
+          return 'Audio URL (required) - Audio để phát âm';
+        default:
+          return 'Audio URL (optional)';
+      }
+    }
+    return 'Audio URL (optional)';
+  }
+
+  String _getDefaultQuestionText() {
+    if (_selectedType == 'fill_blank') {
+      switch (_selectedSkillFocus) {
+        case 'vocabulary':
+          return 'Điền từ vào chỗ trống theo từ vựng';
+        case 'listening':
+          return 'Điền từ vào chỗ trống, hãy nghe audio';
+        case 'reading':
+          return 'Điền từ vào chỗ trống trong đoạn văn';
+        case 'grammar':
+          return 'Điền từ vào chỗ trống theo ngữ pháp';
+        case 'pronunciation':
+          return 'Điền từ vào chỗ trống và phát âm';
+        default:
+          return 'Điền từ vào chỗ trống';
+      }
+    }
+    return 'Câu hỏi bài tập';
+  }
+
   String _getDifficultyDisplay(String difficulty) {
     switch (difficulty) {
       case 'beginner': return 'Dễ';
@@ -1322,9 +1459,19 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         );
       }
 
+      // Prepare context with skill focus
+      Map<String, dynamic> aiContext = {
+        'user_context': _aiContextController.text.trim(),
+      };
+      
+      // Add skill focus for all exercises
+      if (_selectedSkillFocus.isNotEmpty) {
+        aiContext['skill_focus'] = [_selectedSkillFocus];
+      }
+
       final generatedExercise = await ExerciseService.generateExercise(
         _selectedType,
-        _aiContextController.text.trim(),
+        aiContext,
       );
 
       // Populate form with AI generated data
@@ -1389,6 +1536,81 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         // Set correct answer
         if (content['correctAnswer'] != null) {
           _correctOptionIndex = content['correctAnswer'] as int;
+        }
+        
+        // Set feedback
+        if (content['feedback'] != null) {
+          final feedback = content['feedback'] as Map<String, dynamic>;
+          if (feedback['correct'] != null) {
+            _correctFeedbackController.text = feedback['correct'].toString();
+          }
+          if (feedback['incorrect'] != null) {
+            _incorrectFeedbackController.text = feedback['incorrect'].toString();
+          }
+          if (feedback['hint'] != null) {
+            _hintController.text = feedback['hint'].toString();
+          }
+        }
+      } else if (generatedExercise.type == 'fill_blank') {
+        final content = generatedExercise.content;
+        
+        // Set sentence
+        if (content['sentence'] != null) {
+          _sentenceController.text = content['sentence'].toString();
+        }
+        
+        // Set correct answer
+        if (content['correctAnswer'] != null) {
+          _correctAnswerController.text = content['correctAnswer'].toString();
+        }
+        
+        // Set question text based on skill focus
+        if (_questionTextController.text.isEmpty) {
+          _questionTextController.text = _getDefaultQuestionText();
+        }
+        
+        // Populate skill-specific data
+        if (_selectedSkillFocus.isNotEmpty) {
+          print('🎯 [ExerciseForm] Populating skill-specific data for: $_selectedSkillFocus');
+          
+          // Handle vocabulary data
+          if (_selectedSkillFocus == 'vocabulary' && content['vocabulary'] != null) {
+            final vocab = content['vocabulary'] as Map<String, dynamic>;
+            print('📚 Vocabulary data: $vocab');
+            // You can add specific UI fields for vocabulary data here
+          }
+          
+          // Handle listening data
+          if (_selectedSkillFocus == 'listening' && content['listening'] != null) {
+            final listening = content['listening'] as Map<String, dynamic>;
+            print('🎧 Listening data: $listening');
+            if (listening['audioText'] != null) {
+              // You can add audio text field here
+              print('🎵 Audio text: ${listening['audioText']}');
+            }
+          }
+          
+          // Handle reading data
+          if (_selectedSkillFocus == 'reading' && content['reading'] != null) {
+            final reading = content['reading'] as Map<String, dynamic>;
+            print('📖 Reading data: $reading');
+            if (reading['passage'] != null) {
+              // You can add passage field here
+              print('📄 Passage: ${reading['passage']}');
+            }
+          }
+          
+          // Handle grammar data
+          if (_selectedSkillFocus == 'grammar' && content['grammar'] != null) {
+            final grammar = content['grammar'] as Map<String, dynamic>;
+            print('📝 Grammar data: $grammar');
+          }
+          
+          // Handle pronunciation data
+          if (_selectedSkillFocus == 'pronunciation' && content['pronunciation'] != null) {
+            final pronunciation = content['pronunciation'] as Map<String, dynamic>;
+            print('🗣️ Pronunciation data: $pronunciation');
+          }
         }
         
         // Set feedback

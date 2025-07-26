@@ -236,15 +236,40 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
   }
 
   Future<void> _updateLessonOrder(int newOrder) async {
+    if (lesson == null) return;
+    
     try {
-      // TODO: Implement GraphQL mutation to update lesson order
-      // For now, just show a placeholder message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Order update feature coming soon! New order: $newOrder'),
-          backgroundColor: Colors.blue,
-        ),
-      );
+      setState(() {
+        isLoading = true;
+      });
+      
+      final result = await AdminService.setLessonOrder(lesson!.id!, newOrder);
+      
+      if (result != null) {
+        // Update local lesson data
+        lesson = lesson!.copyWith(sortOrder: newOrder);
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Lesson order updated successfully to $newOrder'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        
+        // Refresh data
+        await _loadData();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update lesson order'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -253,6 +278,12 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+        });
       }
     }
   }

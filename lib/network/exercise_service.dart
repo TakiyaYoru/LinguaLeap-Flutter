@@ -13,39 +13,80 @@ class ExerciseService {
   // ===============================================
 
   // Generate exercise with AI
-  static Future<GeneratedExercise> generateExercise(String type, String context) async {
-    try {
-      print('🤖 [ExerciseService] Generating exercise with AI...');
-      print('  - Type: $type');
-      print('  - Context: $context');
-      
-      final result = await _client.query(QueryOptions(
-        document: gql(ExerciseQueries.generateExercise),
-        variables: {
-          'type': type,
-          'context': context,
-        },
-        fetchPolicy: FetchPolicy.networkOnly,
-        errorPolicy: ErrorPolicy.all,
-      ));
+  static Future<GeneratedExercise> generateExercise(String type, dynamic context) async {
+    const int maxRetries = 3;
+    const Duration retryDelay = Duration(seconds: 2);
+    
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        print('🤖 [ExerciseService] Generating exercise with AI... (Attempt $attempt/$maxRetries)');
+        print('  - Type: $type');
+        print('  - Context: $context');
+        
+        // Handle context - ensure it's a Map for GraphQL input type
+        Map<String, dynamic> contextToSend;
+        if (context is String) {
+          contextToSend = {
+            'user_context': context,
+          };
+        } else if (context is Map<String, dynamic>) {
+          contextToSend = Map<String, dynamic>.from(context);
+        } else {
+          contextToSend = {
+            'user_context': context.toString(),
+          };
+        }
 
-      if (result.hasException) {
-        print('❌ [ExerciseService] Error generating exercise: ${result.exception}');
-        throw Exception('Failed to generate exercise: ${result.exception}');
+        final result = await _client.query(QueryOptions(
+          document: gql(ExerciseQueries.generateExercise),
+          variables: {
+            'type': type,
+            'context': contextToSend,
+          },
+          fetchPolicy: FetchPolicy.networkOnly,
+          errorPolicy: ErrorPolicy.all,
+        )).timeout(
+          const Duration(seconds: 60),
+          onTimeout: () {
+            throw Exception('AI generation timeout after 60 seconds');
+          },
+        );
+
+        if (result.hasException) {
+          print('❌ [ExerciseService] Error generating exercise: ${result.exception}');
+          if (attempt < maxRetries) {
+            print('🔄 [ExerciseService] Retrying in ${retryDelay.inSeconds} seconds...');
+            await Future.delayed(retryDelay);
+            continue;
+          }
+          throw Exception('Failed to generate exercise: ${result.exception}');
+        }
+
+        final exerciseData = result.data?['generateExercise'];
+        if (exerciseData == null) {
+          if (attempt < maxRetries) {
+            print('🔄 [ExerciseService] No data returned, retrying...');
+            await Future.delayed(retryDelay);
+            continue;
+          }
+          throw Exception('No exercise data returned from AI');
+        }
+
+        final generatedExercise = GeneratedExercise.fromJson(exerciseData);
+        print('✅ [ExerciseService] Generated exercise: ${generatedExercise.type}');
+        return generatedExercise;
+      } catch (e) {
+        print('❌ [ExerciseService] Exception generating exercise (Attempt $attempt): $e');
+        if (attempt < maxRetries) {
+          print('🔄 [ExerciseService] Retrying in ${retryDelay.inSeconds} seconds...');
+          await Future.delayed(retryDelay);
+        } else {
+          throw Exception('Failed to generate exercise after $maxRetries attempts: $e');
+        }
       }
-
-      final exerciseData = result.data?['generateExercise'];
-      if (exerciseData == null) {
-        throw Exception('No exercise data returned from AI');
-      }
-
-      final generatedExercise = GeneratedExercise.fromJson(exerciseData);
-      print('✅ [ExerciseService] Generated exercise: ${generatedExercise.type}');
-      return generatedExercise;
-    } catch (e) {
-      print('❌ [ExerciseService] Exception generating exercise: $e');
-      throw Exception('Failed to generate exercise: $e');
     }
+    
+    throw Exception('Failed to generate exercise after $maxRetries attempts');
   }
 
   // ===============================================

@@ -440,4 +440,36 @@ class AdminQueries {
       }
     }
   ''';
+  
+  // ===============================================
+  // LESSON ORDER MUTATIONS
+  // ===============================================
+  
+  static const String setLessonOrder = '''
+    mutation SetLessonOrder(\$lessonId: ID!, \$newSortOrder: Int!) {
+      setLessonOrder(lessonId: \$lessonId, newSortOrder: \$newSortOrder) {
+        success
+        message
+        lesson {
+          id
+          title
+          sortOrder
+        }
+      }
+    }
+  ''';
+  
+  static const String setUnitOrder = '''
+    mutation SetUnitOrder(\$unitId: ID!, \$newSortOrder: Int!) {
+      setUnitOrder(unitId: \$unitId, newSortOrder: \$newSortOrder) {
+        success
+        message
+        unit {
+          id
+          title
+          sortOrder
+        }
+      }
+    }
+  ''';
 } 

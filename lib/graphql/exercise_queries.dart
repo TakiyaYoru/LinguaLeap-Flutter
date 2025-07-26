@@ -7,7 +7,7 @@ class ExerciseQueries {
 
   // Generate single exercise with AI
   static const String generateExercise = '''
-    query GenerateExercise(\$type: String!, \$context: String!) {
+    query GenerateExercise(\$type: String!, \$context: ExerciseContextInput!) {
       generateExercise(type: \$type, context: \$context) {
         type
         content

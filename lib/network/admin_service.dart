@@ -550,4 +550,70 @@ class AdminService {
       throw Exception('Failed to unpublish lesson: $e');
     }
   }
+
+  // ===============================================
+  // LESSON ORDER METHODS
+  // ===============================================
+  
+  static Future<Map<String, dynamic>?> setLessonOrder(String lessonId, int newSortOrder) async {
+    try {
+      final result = await GraphQLService.client.mutate(
+        MutationOptions(
+          document: gql(AdminQueries.setLessonOrder),
+          variables: {
+            'lessonId': lessonId,
+            'newSortOrder': newSortOrder,
+          },
+        ),
+      );
+      
+      if (result.hasException) {
+        print('❌ [AdminService] setLessonOrder error: ${result.exception}');
+        return null;
+      }
+      
+      final data = result.data?['setLessonOrder'];
+      if (data != null && data['success'] == true) {
+        print('✅ [AdminService] Lesson order updated successfully');
+        return data;
+      } else {
+        print('❌ [AdminService] setLessonOrder failed: ${data?['message']}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ [AdminService] setLessonOrder exception: $e');
+      return null;
+    }
+  }
+  
+  static Future<Map<String, dynamic>?> setUnitOrder(String unitId, int newSortOrder) async {
+    try {
+      final result = await GraphQLService.client.mutate(
+        MutationOptions(
+          document: gql(AdminQueries.setUnitOrder),
+          variables: {
+            'unitId': unitId,
+            'newSortOrder': newSortOrder,
+          },
+        ),
+      );
+      
+      if (result.hasException) {
+        print('❌ [AdminService] setUnitOrder error: ${result.exception}');
+        return null;
+      }
+      
+      final data = result.data?['setUnitOrder'];
+      if (data != null && data['success'] == true) {
+        print('✅ [AdminService] Unit order updated successfully');
+        return data;
+      } else {
+        print('❌ [AdminService] setUnitOrder failed: ${data?['message']}');
+        return null;
+      }
+    } catch (e) {
+      print('❌ [AdminService] setUnitOrder exception: $e');
+      return null;
+    }
+  }
 } 
