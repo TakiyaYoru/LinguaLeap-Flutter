@@ -253,6 +253,12 @@ class _HomePageState extends State<HomePage> {
             AppThemes.vocabulary,
             () => context.push('/vocabulary'),
           ),
+          _buildPracticeCard(
+            'Exercise CRUD Test',
+            Icons.science,
+            AppThemes.primaryGreen,
+            () => context.push('/exercise-crud-test'),
+          ),
         ],
       ),
     );

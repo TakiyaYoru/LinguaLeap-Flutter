@@ -218,6 +218,7 @@ const String getExercisesByLessonQuery = '''
         title
         instruction
         type
+        exercise_subtype
         question {
           text
           audioUrl

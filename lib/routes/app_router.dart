@@ -26,6 +26,7 @@ import '../pages/admin/lesson_form_page.dart';
 import '../pages/admin/unit_detail_page.dart';
 import '../pages/admin/lesson_detail_page.dart';
 import '../pages/admin/exercise_form_page.dart';
+import '../pages/exercise/exercise_crud_test_page.dart';
 
 class AppRouter {
   static const String login = '/login';
@@ -59,6 +60,7 @@ class AppRouter {
   static const String adminCreateExercise = '/admin/exercises/create';
   static const String adminEditExercise = '/admin/exercises/edit/:exerciseId';
   static const String adminLessonDetail = '/admin/lessons/:lessonId';
+  static const String exerciseCRUDTest = '/exercise-crud-test';
   
   static final GoRouter router = GoRouter(
     initialLocation: home,
@@ -221,6 +223,12 @@ class AppRouter {
             exercises: exercises,
           );
         },
+      ),
+      
+      // Exercise CRUD test route (no shell)
+      GoRoute(
+        path: exerciseCRUDTest,
+        builder: (context, state) => ExerciseCRUDTestPage(),
       ),
       
       // Vocabulary route (no shell)

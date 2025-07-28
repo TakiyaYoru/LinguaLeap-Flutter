@@ -223,22 +223,76 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
 
   Widget _buildExerciseContent(Map<String, dynamic> exercise) {
     final type = exercise['type'] ?? '';
+    final exerciseSubtype = exercise['exercise_subtype'] ?? type;
     
-    switch (type) {
-      case 'multiple_choice':
+    // Handle 28 exercise subtypes
+    switch (exerciseSubtype) {
+      // Multiple Choice subtypes
+      case 'vocabulary_multiple_choice':
+      case 'grammar_multiple_choice':
+      case 'listening_multiple_choice':
+      case 'pronunciation_multiple_choice':
         return _buildMultipleChoiceExercise(exercise);
-      case 'translation':
+      
+      // Fill Blank subtypes
+      case 'vocabulary_fill_blank':
+      case 'grammar_fill_blank':
+      case 'listening_fill_blank':
+      case 'writing_fill_blank':
+        return _buildFillBlankExercise(exercise);
+      
+      // Translation subtypes
+      case 'vocabulary_translation':
+      case 'grammar_translation':
+      case 'writing_translation':
         return _buildTranslationExercise(exercise);
-      case 'word_ordering':
-        return _buildWordOrderingExercise(exercise);
-      case 'listening':
-        return _buildListeningExercise(exercise);
-      case 'speaking':
-        return _buildSpeakingExercise(exercise);
-      case 'matching':
+      
+      // Word Matching subtypes
+      case 'vocabulary_word_matching':
         return _buildMatchingExercise(exercise);
+      
+      // Listening subtypes
+      case 'vocabulary_listening':
+      case 'grammar_listening':
+      case 'pronunciation_listening':
+        return _buildListeningExercise(exercise);
+      
+      // Speaking subtypes
+      case 'vocabulary_speaking':
+      case 'grammar_speaking':
+      case 'pronunciation_speaking':
+        return _buildSpeakingExercise(exercise);
+      
+      // Reading subtypes
+      case 'vocabulary_reading':
+      case 'grammar_reading':
+      case 'comprehension_reading':
+        return _buildReadingExercise(exercise);
+      
+      // Writing subtypes
+      case 'vocabulary_writing':
+      case 'grammar_writing':
+      case 'sentence_writing':
+        return _buildWritingExercise(exercise);
+      
+      // Fallback to original type handling
       default:
-        return _buildPlaceholderContent(exercise);
+        switch (type) {
+          case 'multiple_choice':
+            return _buildMultipleChoiceExercise(exercise);
+          case 'translation':
+            return _buildTranslationExercise(exercise);
+          case 'word_ordering':
+            return _buildWordOrderingExercise(exercise);
+          case 'listening':
+            return _buildListeningExercise(exercise);
+          case 'speaking':
+            return _buildSpeakingExercise(exercise);
+          case 'matching':
+            return _buildMatchingExercise(exercise);
+          default:
+            return _buildPlaceholderContent(exercise);
+        }
     }
   }
 
@@ -928,7 +982,7 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
         // Selected words area
         Container(
           width: double.infinity,
-          constraints: const BoxConstraints(minHeight: 80), // Fixed: using constraints instead of min
+          constraints: const BoxConstraints(minHeight: 80),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.grey.shade50,
@@ -987,6 +1041,300 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
             );
           }).toList(),
         ),
+      ],
+    );
+  }
+
+  // NEW: Fill Blank Exercise
+  Widget _buildFillBlankExercise(Map<String, dynamic> exercise) {
+    final content = exercise['content'] ?? {};
+    final sentence = content['sentence'] ?? '';
+    final correctAnswer = content['correctAnswer'] ?? '';
+    final alternatives = List<String>.from(content['alternatives'] ?? []);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        const Text(
+          'Fill in the blank',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Sentence with blank
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Text(
+            sentence,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // Answer options
+        Expanded(
+          child: ListView.builder(
+            itemCount: alternatives.length + 1, // +1 for correct answer
+            itemBuilder: (context, index) {
+              String option;
+              if (index == 0) {
+                option = correctAnswer;
+              } else {
+                option = alternatives[index - 1];
+              }
+              
+              final isSelected = _selectedAnswer == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: GestureDetector(
+                  onTap: _hasAnswered ? null : () => _selectAnswer(option),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryColor.withOpacity(0.1) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? primaryColor : Colors.grey.shade300,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected ? primaryColor : Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // NEW: Reading Exercise
+  Widget _buildReadingExercise(Map<String, dynamic> exercise) {
+    final content = exercise['content'] ?? {};
+    final text = content['text'] ?? '';
+    final question = content['question'] ?? '';
+    final options = List<String>.from(content['options'] ?? []);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        const Text(
+          'Read and answer',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Reading text
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Question
+        Text(
+          question,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+            color: Colors.black87,
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Answer options
+        Expanded(
+          child: ListView.builder(
+            itemCount: options.length,
+            itemBuilder: (context, index) {
+              final option = options[index];
+              final isSelected = _selectedAnswer == option;
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                child: GestureDetector(
+                  onTap: _hasAnswered ? null : () => _selectAnswer(option),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryColor.withOpacity(0.1) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? primaryColor : Colors.grey.shade300,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Text(
+                      option,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isSelected ? primaryColor : Colors.black87,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // NEW: Writing Exercise
+  Widget _buildWritingExercise(Map<String, dynamic> exercise) {
+    final content = exercise['content'] ?? {};
+    final prompt = content['prompt'] ?? '';
+    final wordBank = List<String>.from(content['wordBank'] ?? []);
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Title
+        const Text(
+          'Write your answer',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Writing prompt
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Text(
+            prompt,
+            style: const TextStyle(
+              fontSize: 16,
+              height: 1.5,
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Selected words area
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: 80),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _selectedWords.map((word) {
+              return GestureDetector(
+                onTap: () => _removeWordFromSelection(word),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Text(
+                    word,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        
+        const Spacer(),
+        
+        // Word bank
+        if (wordBank.isNotEmpty)
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: wordBank.map((word) {
+              final isUsed = _selectedWords.contains(word);
+              return GestureDetector(
+                onTap: isUsed ? null : () => _addWordToSelection(word),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUsed ? Colors.grey.shade200 : Colors.white,
+                    borderRadius: BorderRadius.circular(25),
+                    border: Border.all(
+                      color: isUsed ? Colors.grey.shade300 : Colors.grey.shade400,
+                    ),
+                  ),
+                  child: Text(
+                    word,
+                    style: TextStyle(
+                      color: isUsed ? Colors.grey.shade500 : Colors.black87,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
@@ -1540,20 +1888,74 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
   bool _canCheckAnswer() {
     final currentExercise = widget.exercises[currentExerciseIndex];
     final type = currentExercise['type'] ?? '';
+    final exerciseSubtype = currentExercise['exercise_subtype'] ?? type;
     
-    switch (type) {
-      case 'multiple_choice':
+    // Handle 28 exercise subtypes
+    switch (exerciseSubtype) {
+      // Multiple Choice subtypes
+      case 'vocabulary_multiple_choice':
+      case 'grammar_multiple_choice':
+      case 'listening_multiple_choice':
+      case 'pronunciation_multiple_choice':
         return _selectedAnswer != null;
-      case 'translation':
-      case 'listening':
-      case 'word_ordering':
+      
+      // Fill Blank subtypes
+      case 'vocabulary_fill_blank':
+      case 'grammar_fill_blank':
+      case 'listening_fill_blank':
+      case 'writing_fill_blank':
+        return _selectedAnswer != null;
+      
+      // Translation subtypes
+      case 'vocabulary_translation':
+      case 'grammar_translation':
+      case 'writing_translation':
         return _selectedWords.isNotEmpty;
-      case 'matching':
+      
+      // Word Matching subtypes
+      case 'vocabulary_word_matching':
         return _selectedPairs.length >= 2;
-      case 'speaking':
+      
+      // Listening subtypes
+      case 'vocabulary_listening':
+      case 'grammar_listening':
+      case 'pronunciation_listening':
+        return _selectedWords.isNotEmpty;
+      
+      // Speaking subtypes
+      case 'vocabulary_speaking':
+      case 'grammar_speaking':
+      case 'pronunciation_speaking':
         return _isRecording;
+      
+      // Reading subtypes
+      case 'vocabulary_reading':
+      case 'grammar_reading':
+      case 'comprehension_reading':
+        return _selectedAnswer != null;
+      
+      // Writing subtypes
+      case 'vocabulary_writing':
+      case 'grammar_writing':
+      case 'sentence_writing':
+        return _selectedWords.isNotEmpty;
+      
+      // Fallback to original type handling
       default:
-        return true;
+        switch (type) {
+          case 'multiple_choice':
+            return _selectedAnswer != null;
+          case 'translation':
+          case 'listening':
+          case 'word_ordering':
+            return _selectedWords.isNotEmpty;
+          case 'matching':
+            return _selectedPairs.length >= 2;
+          case 'speaking':
+            return _isRecording;
+          default:
+            return true;
+        }
     }
   }
 
@@ -1562,34 +1964,106 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
     
     final currentExercise = widget.exercises[currentExerciseIndex];
     final content = currentExercise['content'] ?? {};
+    final exerciseSubtype = currentExercise['exercise_subtype'] ?? currentExercise['type'] ?? '';
     
     bool isCorrect = false;
     
-    // Check answer based on exercise type
-    switch (currentExercise['type']) {
-      case 'multiple_choice':
+    // Check answer based on exercise subtype
+    switch (exerciseSubtype) {
+      // Multiple Choice subtypes
+      case 'vocabulary_multiple_choice':
+      case 'grammar_multiple_choice':
+      case 'listening_multiple_choice':
+      case 'pronunciation_multiple_choice':
         isCorrect = _selectedAnswer == content['correctAnswer'];
         break;
-      case 'translation':
-      case 'listening':
+      
+      // Fill Blank subtypes
+      case 'vocabulary_fill_blank':
+      case 'grammar_fill_blank':
+      case 'listening_fill_blank':
+      case 'writing_fill_blank':
+        isCorrect = _selectedAnswer == content['correctAnswer'];
+        break;
+      
+      // Translation subtypes
+      case 'vocabulary_translation':
+      case 'grammar_translation':
+      case 'writing_translation':
         final correctAnswer = content['correctAnswer'] as String? ?? '';
         final userAnswer = _selectedWords.join(' ');
         isCorrect = userAnswer.toLowerCase() == correctAnswer.toLowerCase();
         break;
-      case 'word_ordering':
-        final correctOrder = List<String>.from(content['correctOrder'] ?? []);
-        isCorrect = _selectedWords.join(' ') == correctOrder.join(' ');
+      
+      // Word Matching subtypes
+      case 'vocabulary_word_matching':
+        // Check if selected pairs match the correct pairs
+        final correctPairs = Map<String, String>.from(content['pairs'] ?? {});
+        isCorrect = _selectedPairs.length == 2 && 
+                   correctPairs.containsKey(_selectedPairs.first) &&
+                   correctPairs[_selectedPairs.first] == _selectedPairs.last;
         break;
-      case 'matching':
-        // Simple matching logic - check if selected pair is correct
-        isCorrect = _selectedPairs.length == 2;
+      
+      // Listening subtypes
+      case 'vocabulary_listening':
+      case 'grammar_listening':
+      case 'pronunciation_listening':
+        final correctAnswer = content['correctAnswer'] as String? ?? '';
+        final userAnswer = _selectedWords.join(' ');
+        isCorrect = userAnswer.toLowerCase() == correctAnswer.toLowerCase();
         break;
-      case 'speaking':
+      
+      // Speaking subtypes
+      case 'vocabulary_speaking':
+      case 'grammar_speaking':
+      case 'pronunciation_speaking':
         // For demo purposes, always correct
         isCorrect = true;
         break;
+      
+      // Reading subtypes
+      case 'vocabulary_reading':
+      case 'grammar_reading':
+      case 'comprehension_reading':
+        isCorrect = _selectedAnswer == content['correctAnswer'];
+        break;
+      
+      // Writing subtypes
+      case 'vocabulary_writing':
+      case 'grammar_writing':
+      case 'sentence_writing':
+        final correctAnswer = content['correctAnswer'] as String? ?? '';
+        final userAnswer = _selectedWords.join(' ');
+        isCorrect = userAnswer.toLowerCase() == correctAnswer.toLowerCase();
+        break;
+      
+      // Fallback to original type handling
       default:
-        isCorrect = true;
+        switch (currentExercise['type']) {
+          case 'multiple_choice':
+            isCorrect = _selectedAnswer == content['correctAnswer'];
+            break;
+          case 'translation':
+          case 'listening':
+            final correctAnswer = content['correctAnswer'] as String? ?? '';
+            final userAnswer = _selectedWords.join(' ');
+            isCorrect = userAnswer.toLowerCase() == correctAnswer.toLowerCase();
+            break;
+          case 'word_ordering':
+            final correctOrder = List<String>.from(content['correctOrder'] ?? []);
+            isCorrect = _selectedWords.join(' ') == correctOrder.join(' ');
+            break;
+          case 'matching':
+            // Simple matching logic - check if selected pair is correct
+            isCorrect = _selectedPairs.length == 2;
+            break;
+          case 'speaking':
+            // For demo purposes, always correct
+            isCorrect = true;
+            break;
+          default:
+            isCorrect = true;
+        }
     }
     
     setState(() {

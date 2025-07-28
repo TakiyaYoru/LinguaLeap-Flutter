@@ -10,6 +10,7 @@ class ExerciseModel {
   final String unitId;
   final String lessonId;
   final String type;
+  final String exerciseSubtype; // NEW FIELD
   final PromptTemplate? promptTemplate;
   final GenerationRules? generationRules;
   final List<String> skillFocus;
@@ -40,6 +41,7 @@ class ExerciseModel {
     required this.unitId,
     required this.lessonId,
     required this.type,
+    required this.exerciseSubtype,
     this.promptTemplate,
     this.generationRules,
     required this.skillFocus,
@@ -72,6 +74,7 @@ class ExerciseModel {
       unitId: json['unitId'] ?? '',
       lessonId: json['lessonId'] ?? '',
       type: json['type'] ?? '',
+      exerciseSubtype: json['exercise_subtype'] ?? json['type'] ?? '',
       promptTemplate: json['prompt_template'] != null 
           ? PromptTemplate.fromJson(json['prompt_template']) 
           : null,
@@ -109,6 +112,7 @@ class ExerciseModel {
       'unitId': unitId,
       'lessonId': lessonId,
       'type': type,
+      'exercise_subtype': exerciseSubtype,
       'prompt_template': promptTemplate?.toJson(),
       'generation_rules': generationRules?.toJson(),
       'skill_focus': skillFocus,
@@ -145,24 +149,96 @@ class ExerciseModel {
   }
 
   String get typeDisplay {
-    switch (type.toLowerCase()) {
-      case 'multiple_choice': return 'Chọn đáp án';
-      case 'fill_blank': return 'Điền từ';
-      case 'listening': return 'Nghe hiểu';
-      case 'translation': return 'Dịch';
-      case 'speaking': return 'Phát âm';
-      case 'reading': return 'Đọc hiểu';
-      case 'word_matching': return 'Ghép từ';
-      case 'sentence_building': return 'Sắp xếp câu';
-      case 'true_false': return 'Đúng/Sai';
-      case 'drag_drop': return 'Kéo thả';
-      case 'listen_choose': return 'Nghe và chọn';
-      case 'speak_repeat': return 'Nói và lặp lại';
-      default: return type;
+    // Use exercise_subtype for more specific display names
+    switch (exerciseSubtype.toLowerCase()) {
+      // Multiple Choice subtypes
+      case 'vocabulary_multiple_choice': return 'Chọn từ vựng';
+      case 'grammar_multiple_choice': return 'Chọn ngữ pháp';
+      case 'listening_multiple_choice': return 'Nghe và chọn';
+      case 'pronunciation_multiple_choice': return 'Chọn phát âm';
+      
+      // Fill Blank subtypes
+      case 'vocabulary_fill_blank': return 'Điền từ vựng';
+      case 'grammar_fill_blank': return 'Điền ngữ pháp';
+      case 'listening_fill_blank': return 'Nghe và điền';
+      case 'writing_fill_blank': return 'Viết và điền';
+      
+      // Translation subtypes
+      case 'vocabulary_translation': return 'Dịch từ vựng';
+      case 'grammar_translation': return 'Dịch ngữ pháp';
+      case 'writing_translation': return 'Dịch câu';
+      
+      // Word Matching subtypes
+      case 'vocabulary_word_matching': return 'Ghép từ vựng';
+      
+      // Listening subtypes
+      case 'vocabulary_listening': return 'Nghe từ vựng';
+      case 'grammar_listening': return 'Nghe ngữ pháp';
+      case 'pronunciation_listening': return 'Nghe phát âm';
+      
+      // Speaking subtypes
+      case 'vocabulary_speaking': return 'Nói từ vựng';
+      case 'grammar_speaking': return 'Nói ngữ pháp';
+      case 'pronunciation_speaking': return 'Phát âm';
+      
+      // Reading subtypes
+      case 'vocabulary_reading': return 'Đọc từ vựng';
+      case 'grammar_reading': return 'Đọc ngữ pháp';
+      case 'comprehension_reading': return 'Đọc hiểu';
+      
+      // Writing subtypes
+      case 'vocabulary_writing': return 'Viết từ vựng';
+      case 'grammar_writing': return 'Viết ngữ pháp';
+      case 'sentence_writing': return 'Viết câu';
+      
+      // Fallback to original type display
+      default:
+        switch (type.toLowerCase()) {
+          case 'multiple_choice': return 'Chọn đáp án';
+          case 'fill_blank': return 'Điền từ';
+          case 'listening': return 'Nghe hiểu';
+          case 'translation': return 'Dịch';
+          case 'speaking': return 'Phát âm';
+          case 'reading': return 'Đọc hiểu';
+          case 'word_matching': return 'Ghép từ';
+          case 'sentence_building': return 'Sắp xếp câu';
+          case 'true_false': return 'Đúng/Sai';
+          case 'drag_drop': return 'Kéo thả';
+          case 'listen_choose': return 'Nghe và chọn';
+          case 'speak_repeat': return 'Nói và lặp lại';
+          default: return type;
+        }
     }
   }
 
   bool get hasTimeLimit => timeLimit != null && timeLimit! > 0;
+  
+  // Helper methods for exercise subtypes
+  bool get isVocabularyExercise => exerciseSubtype.contains('vocabulary');
+  bool get isGrammarExercise => exerciseSubtype.contains('grammar');
+  bool get isListeningExercise => exerciseSubtype.contains('listening');
+  bool get isSpeakingExercise => exerciseSubtype.contains('speaking');
+  bool get isReadingExercise => exerciseSubtype.contains('reading');
+  bool get isWritingExercise => exerciseSubtype.contains('writing');
+  bool get isPronunciationExercise => exerciseSubtype.contains('pronunciation');
+  
+  // Exercise type helpers
+  bool get isMultipleChoice => exerciseSubtype.contains('multiple_choice');
+  bool get isFillBlank => exerciseSubtype.contains('fill_blank');
+  bool get isTranslation => exerciseSubtype.contains('translation');
+  bool get isWordMatching => exerciseSubtype.contains('word_matching');
+  
+  // Get primary skill focus
+  String get primarySkillFocus {
+    if (isVocabularyExercise) return 'vocabulary';
+    if (isGrammarExercise) return 'grammar';
+    if (isListeningExercise) return 'listening';
+    if (isSpeakingExercise) return 'speaking';
+    if (isReadingExercise) return 'reading';
+    if (isWritingExercise) return 'writing';
+    if (isPronunciationExercise) return 'pronunciation';
+    return 'general';
+  }
   
   String get timeLimitDisplay {
     if (!hasTimeLimit) return 'Không giới hạn';
