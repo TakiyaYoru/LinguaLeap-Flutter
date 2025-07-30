@@ -5,6 +5,7 @@ import 'true_false_widget.dart';
 import 'translation_widget.dart';
 import 'word_matching_widget.dart';
 import 'listening_widget.dart';
+import 'speaking_widget.dart';
 
 class ExerciseWidgetFactory {
   static Widget createExerciseWidget({
@@ -57,6 +58,16 @@ class ExerciseWidgetFactory {
       
       case 'listening':
         return ListeningWidget(
+          key: ValueKey('listening_${content.hashCode}_${question.hashCode}'),
+          content: content,
+          question: question,
+          onAnswerSubmitted: onAnswerSubmitted,
+          controllerState: controllerState,
+        );
+      
+      case 'speaking':
+        return SpeakingWidget(
+          key: ValueKey('speaking_${content.hashCode}_${question.hashCode}'),
           content: content,
           question: question,
           onAnswerSubmitted: onAnswerSubmitted,

@@ -43,6 +43,18 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
   final _aiContextController = TextEditingController();
   bool _isGenerating = false;
 
+  // Listening-specific fields
+  final _audioTextController = TextEditingController();
+  final _transcriptionController = TextEditingController();
+  final List<TextEditingController> _listeningOptionControllers = [
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+    TextEditingController(),
+  ];
+  int _correctListeningOptionIndex = 0;
+  bool _isGeneratingAudio = false;
+
   // Multiple Choice
   final List<TextEditingController> _optionControllers = [
     TextEditingController(),
@@ -117,7 +129,6 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     'true_false',
     'drag_drop',
     'listen_choose',
-    'speak_repeat',
   ];
 
   final List<String> _difficulties = ['beginner', 'intermediate', 'advanced'];
@@ -162,6 +173,13 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     _targetTextController.dispose();
     _statementController.dispose();
     
+    // Dispose listening-specific controllers
+    _audioTextController.dispose();
+    _transcriptionController.dispose();
+    for (var controller in _listeningOptionControllers) {
+      controller.dispose();
+    }
+    
     for (var controller in _optionControllers) {
       controller.dispose();
     }
@@ -199,7 +217,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       // Set default words for matching
       
       // Auto-fill AI suggestion for supported exercise types
-      if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+      if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening') {
         _aiContextController.text = _generateAISuggestion();
       }
       _wordControllers[0].text = 'Hello';
@@ -314,12 +332,15 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
             }
             if (content['options'] != null && content['options'] is List) {
               final options = content['options'] as List;
-              for (int i = 0; i < options.length && i < _optionControllers.length; i++) {
-                _optionControllers[i].text = options[i].toString();
+              for (int i = 0; i < options.length && i < _listeningOptionControllers.length; i++) {
+                _listeningOptionControllers[i].text = options[i].toString();
               }
             }
             if (content['correctAnswer'] != null) {
-              _correctOptionIndex = content['correctAnswer'] as int;
+              _correctListeningOptionIndex = content['correctAnswer'] as int;
+            }
+            if (content['transcription'] != null) {
+              _transcriptionController.text = content['transcription'].toString();
             }
             break;
           case 'translation':
@@ -403,11 +424,11 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       
       case 'listening':
         return {
-          'audio_text': _questionTextController.text.trim(),
+          'audio_text': _audioTextController.text.trim(),
           'question': _questionTextController.text.trim(),
-          'options': _optionControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
-          'correctAnswer': _correctOptionIndex,
-          'transcription': _questionTextController.text.trim(),
+          'options': _listeningOptionControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
+          'correctAnswer': _correctListeningOptionIndex,
+          'transcription': _transcriptionController.text.trim(),
           'audioUrl': _audioUrlController.text.trim().isEmpty ? null : _audioUrlController.text.trim(),
         };
       
@@ -432,6 +453,19 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         return {
           'words': words,
           'correctOrder': List.generate(words.length, (index) => index),
+        };
+      
+      case 'speaking':
+        return {
+          'sentence': _questionTextController.text.trim(),
+          'instruction': _instructionController.text.trim(),
+          'audio_text': _audioTextController.text.trim(),
+          'feedback': {
+            'correct': _correctFeedbackController.text.trim(),
+            'incorrect': _incorrectFeedbackController.text.trim(),
+            'hint': _hintController.text.trim(),
+          },
+          'skill_focus': _selectedSkillFocus,
         };
       
       default:
@@ -587,7 +621,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     const SizedBox(height: 16),
                     
                     // AI Generation Section
-                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') ...[
+                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') ...[
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -623,7 +657,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching')
+                                  if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking')
                                     IconButton(
                                       onPressed: () {
                                         _aiContextController.text = _generateAISuggestion();
@@ -678,7 +712,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                           final availableSkills = _getSkillFocusOptions();
                           _selectedSkillFocus = availableSkills.isNotEmpty ? availableSkills.first : '';
                           // Auto-fill AI suggestion when exercise type changes
-                          if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+                          if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
                             _aiContextController.text = _generateAISuggestion();
                           }
                         });
@@ -730,7 +764,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                               setState(() {
                                 _selectedSkillFocus = value!;
                                 // Auto-fill AI suggestion when skill focus changes
-                                if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+                                if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
                                   _aiContextController.text = _generateAISuggestion();
                                 }
                               });
@@ -1010,7 +1044,6 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       case 'reading':
         return _buildListeningReadingForm();
       case 'speaking':
-      case 'speak_repeat':
         return _buildSpeakingForm();
       case 'drag_drop':
         return _buildDragDropForm();
@@ -1259,101 +1292,178 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
   }
 
   Widget _buildListeningReadingForm() {
+    // Check if this is a listening exercise
+    final isListening = _selectedType == 'listening';
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Audio Text Field for TTS
+        // Audio Text Field for TTS (only for listening)
+        if (isListening) ...[
+          TextFormField(
+            controller: _audioTextController,
+            decoration: const InputDecoration(
+              labelText: 'Audio Text (for TTS) *',
+              border: OutlineInputBorder(),
+              hintText: 'Enter the text that will be converted to audio...',
+              helperText: 'This text will be converted to speech for the listening exercise',
+            ),
+            maxLines: 3,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return 'Please enter audio text';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Generate Audio Button
+          ElevatedButton.icon(
+            onPressed: _isGeneratingAudio ? null : _generateAudioFromText,
+            icon: _isGeneratingAudio 
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.volume_up),
+            label: Text(_isGeneratingAudio ? 'Generating Audio...' : 'Generate Audio from Text'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppThemes.systemBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Audio URL Field (auto-filled after generation)
+          TextFormField(
+            controller: _audioUrlController,
+            decoration: const InputDecoration(
+              labelText: 'Audio URL (auto-generated)',
+              border: OutlineInputBorder(),
+              hintText: 'Will be filled automatically after generating audio',
+              helperText: 'This URL will be used to play the audio in the exercise',
+            ),
+            readOnly: true,
+          ),
+          const SizedBox(height: 16),
+          
+          // Transcription Field (for listening exercises)
+          TextFormField(
+            controller: _transcriptionController,
+            decoration: const InputDecoration(
+              labelText: 'Transcription (Optional)',
+              border: OutlineInputBorder(),
+              hintText: 'Enter the exact transcription of the audio...',
+              helperText: 'This will be shown to students after they answer',
+            ),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 16),
+        ],
+        
+        // Question Field
         TextFormField(
           controller: _questionTextController,
-          decoration: const InputDecoration(
-            labelText: 'Audio Text (for TTS) *',
-            border: OutlineInputBorder(),
-            hintText: 'Enter the text that will be converted to audio...',
+          decoration: InputDecoration(
+            labelText: isListening ? 'Question for Students' : 'Reading Passage',
+            border: const OutlineInputBorder(),
+            hintText: isListening ? 'What did you hear?' : 'Enter the reading passage...',
+            helperText: isListening 
+              ? 'Question students will see after listening to the audio'
+              : 'The text students will read',
           ),
-          maxLines: 3,
+          maxLines: isListening ? 2 : 5,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter audio text';
+              return isListening ? 'Please enter the question' : 'Please enter the reading passage';
             }
             return null;
           },
         ),
         const SizedBox(height: 16),
         
-        // Generate Audio Button
-        ElevatedButton.icon(
-          onPressed: _isGenerating ? null : _generateAudioFromText,
-          icon: _isGenerating 
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.volume_up),
-          label: Text(_isGenerating ? 'Generating Audio...' : 'Generate Audio from Text'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppThemes.systemBlue,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          ),
-        ),
-        const SizedBox(height: 16),
-        
-        // Audio URL Field (auto-filled after generation)
-        TextFormField(
-          controller: _audioUrlController,
-          decoration: const InputDecoration(
-            labelText: 'Audio URL (auto-generated)',
-            border: OutlineInputBorder(),
-            hintText: 'Will be filled automatically after generating audio',
-          ),
-          readOnly: true,
-        ),
-        const SizedBox(height: 16),
-        
-        // Question Field
-        TextFormField(
-          controller: _questionTextController,
-          decoration: const InputDecoration(
-            labelText: 'Question for Students',
-            border: OutlineInputBorder(),
-            hintText: 'What did you hear?',
-          ),
-          maxLines: 3,
-        ),
-        const SizedBox(height: 16),
-        
-        // Options Section
-        Text('Answer Options:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
-        const SizedBox(height: 8),
-        ...List.generate(4, (index) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Radio<int>(
-                  value: index,
-                  groupValue: _correctOptionIndex,
-                  onChanged: (value) {
-                    setState(() {
-                      _correctOptionIndex = value!;
-                    });
-                  },
-                ),
-                Expanded(
-                  child: TextFormField(
-                    controller: _optionControllers[index],
-                    decoration: InputDecoration(
-                      labelText: 'Option ${String.fromCharCode(65 + index)}',
-                      border: const OutlineInputBorder(),
-                      hintText: 'Enter option ${String.fromCharCode(65 + index)}',
+        // Options Section (for listening exercises)
+        if (isListening) ...[
+          Text('Answer Options:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
+          const SizedBox(height: 8),
+          ...List.generate(4, (index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Radio<int>(
+                    value: index,
+                    groupValue: _correctListeningOptionIndex,
+                    onChanged: (value) {
+                      setState(() {
+                        _correctListeningOptionIndex = value!;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _listeningOptionControllers[index],
+                      decoration: InputDecoration(
+                        labelText: 'Option ${String.fromCharCode(65 + index)}',
+                        border: const OutlineInputBorder(),
+                        hintText: 'Enter option ${String.fromCharCode(65 + index)}',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter option ${String.fromCharCode(65 + index)}';
+                        }
+                        return null;
+                      },
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }),
+                ],
+              ),
+            );
+          }),
+        ],
+        
+        // Reading-specific fields
+        if (!isListening) ...[
+          Text('Reading Questions:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
+          const SizedBox(height: 8),
+          ...List.generate(4, (index) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Radio<int>(
+                    value: index,
+                    groupValue: _correctOptionIndex,
+                    onChanged: (value) {
+                      setState(() {
+                        _correctOptionIndex = value!;
+                      });
+                    },
+                  ),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _optionControllers[index],
+                      decoration: InputDecoration(
+                        labelText: 'Question ${index + 1}',
+                        border: const OutlineInputBorder(),
+                        hintText: 'Enter question ${index + 1}',
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter question ${index + 1}';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
       ],
     );
   }
@@ -1362,23 +1472,82 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Sentence to speak
         TextFormField(
           controller: _questionTextController,
           decoration: const InputDecoration(
-            labelText: 'Speaking Prompt',
+            labelText: 'Câu/Từ cần nói *',
             border: OutlineInputBorder(),
-            hintText: 'Repeat after me: "Hello, how are you?"',
+            hintText: 'Hello',
           ),
-          maxLines: 3,
+          maxLines: 2,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'Vui lòng nhập câu/từ cần nói';
+            }
+            return null;
+          },
         ),
         const SizedBox(height: 16),
+        
+        // Instruction
         TextFormField(
-          controller: _audioUrlController,
+          controller: _instructionController,
           decoration: const InputDecoration(
-            labelText: 'Audio URL (for pronunciation)',
+            labelText: 'Hướng dẫn',
             border: OutlineInputBorder(),
-            hintText: 'https://example.com/pronunciation.mp3',
+            hintText: 'Đọc câu/từ này',
           ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+        
+        // Audio text (for TTS)
+        TextFormField(
+          controller: _audioTextController,
+          decoration: const InputDecoration(
+            labelText: 'Audio Text (cho TTS)',
+            border: OutlineInputBorder(),
+            hintText: 'Text để chuyển thành giọng nói (giống câu trên)',
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+        
+        // Feedback section
+        _buildSectionTitle('Feedback'),
+        const SizedBox(height: 8),
+        
+        TextFormField(
+          controller: _correctFeedbackController,
+          decoration: const InputDecoration(
+            labelText: 'Feedback đúng',
+            border: OutlineInputBorder(),
+            hintText: 'Tuyệt vời! Phát âm chính xác',
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+        
+        TextFormField(
+          controller: _incorrectFeedbackController,
+          decoration: const InputDecoration(
+            labelText: 'Feedback sai',
+            border: OutlineInputBorder(),
+            hintText: 'Hãy thử lại',
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 16),
+        
+        TextFormField(
+          controller: _hintController,
+          decoration: const InputDecoration(
+            labelText: 'Gợi ý',
+            border: OutlineInputBorder(),
+            hintText: 'Nói chậm và rõ ràng',
+          ),
+          maxLines: 2,
         ),
       ],
     );
@@ -1481,7 +1650,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       case 'true_false': return 'True/False';
       case 'drag_drop': return 'Drag & Drop';
       case 'listen_choose': return 'Listen & Choose';
-      case 'speak_repeat': return 'Speak & Repeat';
+
       default: return type.replaceAll('_', ' ').toUpperCase();
     }
   }
@@ -1503,21 +1672,28 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
 
   // Generate AI suggestion based on exercise type and skill focus
   String _generateAISuggestion() {
-    final skillFocusDisplay = _getSkillFocusDisplayName(_selectedSkillFocus);
-    
-    if (_selectedType == 'multiple_choice') {
-      return 'Tạo cho tôi câu hỏi với skill focus là $skillFocusDisplay với chủ đề _____';
-    } else if (_selectedType == 'fill_blank') {
-      return 'Tạo cho tôi câu điền từ với skill focus là $skillFocusDisplay với chủ đề _____';
-    } else if (_selectedType == 'true_false') {
-      return 'Tạo cho tôi câu đúng/sai với skill focus là $skillFocusDisplay với chủ đề _____';
-    } else if (_selectedType == 'translation') {
-      return 'Tạo cho tôi bài tập dịch thuật với skill focus là $skillFocusDisplay với chủ đề _____';
-    } else if (_selectedType == 'word_matching') {
-      return 'Tạo cho tôi bài tập ghép từ với skill focus là $skillFocusDisplay với chủ đề _____';
+    switch (_selectedType) {
+      case 'multiple_choice':
+        return "Tạo cho tôi bài tập multiple choice về chủ đề _____";
+      case 'fill_blank':
+        return "Tạo cho tôi bài tập điền từ về chủ đề _____";
+      case 'listening':
+        return "Tạo cho tôi bài tập listening tập trung vào từ vựng với chủ đề _____";
+      case 'speaking':
+        if (_selectedSkillFocus == 'pronunciation') {
+          return "Tạo cho tôi bài tập speaking tập trung vào phát âm với chủ đề _____";
+        } else if (_selectedSkillFocus == 'fluency') {
+          return "Tạo cho tôi bài tập speaking tập trung vào fluency với chủ đề _____";
+        } else {
+          return "Tạo cho tôi bài tập speaking với chủ đề _____";
+        }
+      case 'translation':
+        return "Tạo cho tôi bài tập dịch về chủ đề _____";
+      case 'true_false':
+        return "Tạo cho tôi bài tập đúng/sai về chủ đề _____";
+      default:
+        return "Tạo cho tôi bài tập về chủ đề _____";
     }
-    
-    return 'Tạo cho tôi bài tập với skill focus là $skillFocusDisplay với chủ đề _____';
   }
 
   // Get display name for skill focus
@@ -1539,32 +1715,16 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
 
   List<String> _getSkillFocusOptions() {
     switch (_selectedType) {
-      case 'multiple_choice':
-        return ['vocabulary', 'grammar', 'listening', 'pronunciation'];
-      case 'fill_blank':
-        return ['vocabulary', 'grammar', 'listening', 'writing'];
       case 'listening':
-        return ['listening'];
-      case 'translation':
-        return ['vocabulary', 'grammar', 'writing'];
+        return ['listening', 'vocabulary', 'grammar'];
       case 'speaking':
-        return ['speaking', 'pronunciation', 'fluency'];
-      case 'reading':
-        return ['vocabulary', 'grammar', 'fluency'];
-      case 'word_matching':
-        return ['vocabulary'];
-      case 'sentence_building':
-        return ['vocabulary', 'grammar', 'writing'];
+        return ['pronunciation', 'fluency', 'intonation'];
+      case 'fill_blank':
+        return ['vocabulary', 'grammar'];
       case 'true_false':
-        return ['vocabulary', 'grammar', 'listening'];
-      case 'drag_drop':
-        return ['vocabulary', 'grammar', 'writing'];
-      case 'listen_choose':
-        return ['listening'];
-      case 'speak_repeat':
-        return ['speaking', 'pronunciation', 'fluency'];
+        return ['vocabulary', 'listening', 'grammar'];
       default:
-        return ['vocabulary', 'grammar', 'comprehension'];
+        return ['vocabulary', 'grammar', 'listening', 'speaking', 'reading', 'writing', 'pronunciation', 'comprehension'];
     }
   }
 
@@ -1632,7 +1792,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
 
   // Audio Generation Methods
   Future<void> _generateAudioFromText() async {
-    if (_questionTextController.text.trim().isEmpty) {
+    if (_audioTextController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vui lòng nhập text để tạo audio trước'),
@@ -1643,12 +1803,12 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     }
 
     setState(() {
-      _isGenerating = true;
+      _isGeneratingAudio = true;
     });
 
     try {
       print('🔊 [ExerciseForm] Generating audio from text...');
-      print('  - Text: ${_questionTextController.text}');
+      print('  - Text: ${_audioTextController.text}');
 
       // Show loading message
       if (mounted) {
@@ -1663,7 +1823,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
 
       // Generate audio using TTS
       final audioResult = await ExerciseService.generateAudio(
-        _questionTextController.text.trim(),
+        _audioTextController.text.trim(),
       );
 
       // Update audio URL field
@@ -1692,7 +1852,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       }
     } finally {
       setState(() {
-        _isGenerating = false;
+        _isGeneratingAudio = false;
       });
     }
   }
@@ -1735,8 +1895,22 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       };
       
       // Add skill focus for exercises that support it
-      if (_selectedSkillFocus.isNotEmpty && _selectedType != 'fill_blank' && _selectedType != 'true_false' && _selectedType != 'translation' && _selectedType != 'word_matching') {
-        aiContext['skill_focus'] = [_selectedSkillFocus];
+      if (_selectedSkillFocus.isNotEmpty) {
+        if (_selectedType == 'listening') {
+          // Listening supports vocabulary and grammar skill focus
+          if (['vocabulary', 'grammar'].contains(_selectedSkillFocus)) {
+            aiContext['skill_focus'] = [_selectedSkillFocus];
+            aiContext['topic'] = _getTopicFromContext(_aiContextController.text.trim());
+          }
+        } else if (_selectedType == 'true_false') {
+          // True/false supports vocabulary, listening, and grammar skill focus
+          if (['vocabulary', 'listening', 'grammar'].contains(_selectedSkillFocus)) {
+            aiContext['skill_focus'] = [_selectedSkillFocus];
+          }
+        } else if (_selectedType != 'fill_blank' && _selectedType != 'translation' && _selectedType != 'word_matching') {
+          // Other exercises support general skill focus
+          aiContext['skill_focus'] = [_selectedSkillFocus];
+        }
       }
 
       final generatedExercise = await ExerciseService.generateExercise(
@@ -1990,6 +2164,89 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
             _hintController.text = feedback['hint'].toString();
           }
         }
+      } else if (generatedExercise.type == 'listening') {
+        final content = generatedExercise.content;
+        print('🎧 [ExerciseForm] Listening content: $content');
+        
+        // Set audio text
+        if (content['audio_text'] != null) {
+          _audioTextController.text = content['audio_text'].toString();
+        }
+        
+        // Set question
+        if (content['question'] != null) {
+          _questionTextController.text = content['question'].toString();
+        }
+        
+        // Set options
+        if (content['options'] != null && content['options'] is List) {
+          final options = content['options'] as List;
+          for (int i = 0; i < options.length && i < _listeningOptionControllers.length; i++) {
+            _listeningOptionControllers[i].text = options[i].toString();
+          }
+        }
+        
+        // Set correct answer
+        if (content['correctAnswer'] != null) {
+          _correctListeningOptionIndex = content['correctAnswer'] as int;
+        }
+        
+        // Set transcription
+        if (content['transcription'] != null) {
+          _transcriptionController.text = content['transcription'].toString();
+        }
+        
+        // Set feedback
+        if (content['feedback'] != null) {
+          final feedback = content['feedback'] as Map<String, dynamic>;
+          if (feedback['correct'] != null) {
+            _correctFeedbackController.text = feedback['correct'].toString();
+          }
+          if (feedback['incorrect'] != null) {
+            _incorrectFeedbackController.text = feedback['incorrect'].toString();
+          }
+          if (feedback['hint'] != null) {
+            _hintController.text = feedback['hint'].toString();
+          }
+        }
+        
+        // Handle listening-specific data
+        if (content['listening_focus'] != null) {
+          final listeningFocus = content['listening_focus'] as Map<String, dynamic>;
+          print('🎧 Listening focus data: $listeningFocus');
+          
+          // Set audio URL if available
+          if (listeningFocus['audio_url'] != null) {
+            _audioUrlController.text = listeningFocus['audio_url'].toString();
+          }
+        }
+        
+        // Handle skill-specific data for listening
+        if (_selectedSkillFocus.isNotEmpty) {
+          print('🎯 [ExerciseForm] Populating skill-specific data for listening: $_selectedSkillFocus');
+          
+          // Handle vocabulary listening data
+          if (_selectedSkillFocus == 'vocabulary' && content['vocabulary_focus'] != null) {
+            final vocabFocus = content['vocabulary_focus'] as Map<String, dynamic>;
+            print('📚 Vocabulary listening data: $vocabFocus');
+            
+            // Set title with vocabulary info
+            if (vocabFocus['target_word'] != null && _titleController.text.isEmpty) {
+              _titleController.text = 'Listening: ${vocabFocus['target_word']}';
+            }
+          }
+          
+          // Handle grammar listening data
+          if (_selectedSkillFocus == 'grammar' && content['grammar_focus'] != null) {
+            final grammarFocus = content['grammar_focus'] as Map<String, dynamic>;
+            print('📝 Grammar listening data: $grammarFocus');
+            
+            // Set title with grammar info
+            if (grammarFocus['grammar_point'] != null && _titleController.text.isEmpty) {
+              _titleController.text = 'Listening: ${grammarFocus['grammar_point']}';
+            }
+          }
+        }
       }
       
       // Set vocabulary info if available
@@ -2014,6 +2271,59 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           backgroundColor: Colors.orange,
         ),
       );
+    }
+  }
+
+  String _getTopicFromContext(String context) {
+    // Simple topic extraction from context
+    final lowerContext = context.toLowerCase();
+    
+    if (lowerContext.contains('food') || lowerContext.contains('eat') || lowerContext.contains('apple') || lowerContext.contains('fruit')) {
+      return 'food';
+    } else if (lowerContext.contains('greet') || lowerContext.contains('hello') || lowerContext.contains('hi')) {
+      return 'greetings';
+    } else if (lowerContext.contains('family') || lowerContext.contains('mother') || lowerContext.contains('father')) {
+      return 'family';
+    } else if (lowerContext.contains('color') || lowerContext.contains('red') || lowerContext.contains('blue')) {
+      return 'colors';
+    } else if (lowerContext.contains('number') || lowerContext.contains('count') || lowerContext.contains('one') || lowerContext.contains('two')) {
+      return 'numbers';
+    } else if (lowerContext.contains('animal') || lowerContext.contains('dog') || lowerContext.contains('cat')) {
+      return 'animals';
+    } else if (lowerContext.contains('school') || lowerContext.contains('study') || lowerContext.contains('learn')) {
+      return 'education';
+    } else if (lowerContext.contains('work') || lowerContext.contains('job') || lowerContext.contains('office')) {
+      return 'work';
+    } else if (lowerContext.contains('home') || lowerContext.contains('house') || lowerContext.contains('room')) {
+      return 'home';
+    } else if (lowerContext.contains('time') || lowerContext.contains('clock') || lowerContext.contains('hour')) {
+      return 'time';
+    } else if (lowerContext.contains('weather') || lowerContext.contains('sunny') || lowerContext.contains('rain')) {
+      return 'weather';
+    } else if (lowerContext.contains('travel') || lowerContext.contains('trip') || lowerContext.contains('vacation')) {
+      return 'travel';
+    } else if (lowerContext.contains('shopping') || lowerContext.contains('buy') || lowerContext.contains('store')) {
+      return 'shopping';
+    } else if (lowerContext.contains('sport') || lowerContext.contains('game') || lowerContext.contains('play')) {
+      return 'sports';
+    } else if (lowerContext.contains('music') || lowerContext.contains('song') || lowerContext.contains('sing')) {
+      return 'music';
+    } else if (lowerContext.contains('movie') || lowerContext.contains('film') || lowerContext.contains('watch')) {
+      return 'entertainment';
+    } else if (lowerContext.contains('health') || lowerContext.contains('doctor') || lowerContext.contains('hospital')) {
+      return 'health';
+    } else if (lowerContext.contains('transport') || lowerContext.contains('car') || lowerContext.contains('bus')) {
+      return 'transportation';
+    } else if (lowerContext.contains('clothes') || lowerContext.contains('shirt') || lowerContext.contains('dress')) {
+      return 'clothing';
+    } else if (lowerContext.contains('body') || lowerContext.contains('head') || lowerContext.contains('hand')) {
+      return 'body_parts';
+    } else if (lowerContext.contains('emotion') || lowerContext.contains('happy') || lowerContext.contains('sad')) {
+      return 'emotions';
+    } else if (lowerContext.contains('daily') || lowerContext.contains('routine') || lowerContext.contains('morning')) {
+      return 'daily_activities';
+    } else {
+      return 'general';
     }
   }
 } 

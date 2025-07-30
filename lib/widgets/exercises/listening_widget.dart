@@ -1,8 +1,9 @@
 // ===============================================
-// FIXED LISTENING EXERCISE WIDGET
+// IMPROVED LISTENING EXERCISE WIDGET - CROSS-PLATFORM
 // ===============================================
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../theme/app_themes.dart';
 import '../../utils/audio_service.dart';
 
@@ -35,6 +36,9 @@ class _ListeningWidgetState extends State<ListeningWidget> {
   int playCount = 0;
   static const int maxPlayCount = 3;
   String? audioError;
+  bool isInitializing = true;
+  Duration? audioDuration;
+  Duration currentPosition = Duration.zero;
 
   @override
   void initState() {
@@ -49,43 +53,80 @@ class _ListeningWidgetState extends State<ListeningWidget> {
     super.dispose();
   }
 
-  void _initializeExercise() {
-    options = widget.content['options'] as List<dynamic>? ?? [];
-    audioText = widget.content['audio_text'] as String?;
-    transcription = widget.content['transcription'] as String?;
+  @override
+  void didUpdateWidget(ListeningWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
     
-    // Get audio URL from content or question with better validation
-    audioUrl = widget.content['audioUrl'] as String? ?? 
-               widget.question['audioUrl'] as String? ??
-               widget.content['audio_url'] as String? ??
-               widget.question['audio_url'] as String?;
-    
-    // Restore state if available
-    if (widget.controllerState != null) {
-      selectedOptionIndex = widget.controllerState!['selectedOptionIndex'];
-      playCount = widget.controllerState!['playCount'] ?? 0;
+    // Check if exercise content has changed
+    if (oldWidget.content != widget.content || oldWidget.question != widget.question) {
+      print('🔄 [ListeningWidget] Exercise content changed, resetting state...');
+      _resetState();
+      _initializeExercise();
+      _initializeAudio();
     }
+  }
+
+  void _resetState() {
+    setState(() {
+      // Reset all state variables
+      options = [];
+      selectedOptionIndex = null;
+      audioUrl = null;
+      audioText = null;
+      transcription = null;
+      isAudioReady = false;
+      playCount = 0;
+      audioError = null;
+      isInitializing = true;
+      audioDuration = null;
+      currentPosition = Duration.zero;
+    });
     
-    print('🔍 [ListeningWidget] Initialized:');
-    print('  - options: $options');
-    print('  - audioText: $audioText');
-    print('  - transcription: $transcription');
-    print('  - audioUrl: $audioUrl');
-    
-    // Validate audio URL
-    if (audioUrl == null || audioUrl!.isEmpty) {
-      audioError = 'Không tìm thấy URL audio';
-      print('❌ No audio URL found');
-    } else if (!_isValidUrl(audioUrl!)) {
-      audioError = 'URL audio không hợp lệ';
-      print('❌ Invalid audio URL: $audioUrl');
+    print('🔄 [ListeningWidget] State reset completed');
+  }
+
+  void _initializeExercise() {
+    try {
+      options = widget.content['options'] as List<dynamic>? ?? [];
+      audioText = widget.content['audio_text'] as String?;
+      transcription = widget.content['transcription'] as String?;
+      
+      // Get audio URL from multiple possible sources
+      audioUrl = widget.content['audioUrl'] as String? ?? 
+                 widget.question['audioUrl'] as String? ??
+                 widget.content['audio_url'] as String? ??
+                 widget.question['audio_url'] as String?;
+      
+      // Restore state if available
+      if (widget.controllerState != null) {
+        selectedOptionIndex = widget.controllerState!['selectedOptionIndex'];
+        playCount = widget.controllerState!['playCount'] ?? 0;
+      }
+      
+      print('🔍 [ListeningWidget] Initialized:');
+      print('  - options: ${options.length} items');
+      print('  - audioText: ${audioText?.length ?? 0} chars');
+      print('  - transcription: ${transcription?.length ?? 0} chars');
+      print('  - audioUrl: ${audioUrl?.length ?? 0} chars');
+      
+      // Validate audio URL
+      if (audioUrl == null || audioUrl!.isEmpty) {
+        audioError = 'Không tìm thấy URL audio';
+        print('❌ [ListeningWidget] No audio URL found');
+      } else if (!_isValidUrl(audioUrl!)) {
+        audioError = 'URL audio không hợp lệ';
+        print('❌ [ListeningWidget] Invalid audio URL: $audioUrl');
+      }
+    } catch (e) {
+      print('❌ [ListeningWidget] Error initializing exercise: $e');
+      audioError = 'Lỗi khởi tạo bài tập: $e';
     }
   }
 
   bool _isValidUrl(String url) {
     try {
       final uri = Uri.parse(url);
-      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https');
+      return uri.hasScheme && (uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'data');
     } catch (e) {
       return false;
     }
@@ -93,7 +134,16 @@ class _ListeningWidgetState extends State<ListeningWidget> {
 
   Future<void> _initializeAudio() async {
     try {
-      await _audioService.initialize();
+      setState(() {
+        isInitializing = true;
+        audioError = null;
+        // Reset audio-related state
+        audioDuration = null;
+        currentPosition = Duration.zero;
+      });
+
+      // Force reinitialize audio service for new exercise
+      await _audioService.forceReinitialize();
       
       // Set up audio state listener
       _audioService.onStateChanged((state) {
@@ -106,26 +156,47 @@ class _ListeningWidgetState extends State<ListeningWidget> {
           });
         }
       });
+
+      // Set up position listener for progress tracking
+      _audioService.onPositionChanged((position) {
+        if (mounted) {
+          setState(() {
+            currentPosition = position;
+          });
+        }
+      });
+
+      // Set up duration listener
+      _audioService.onDurationChanged((duration) {
+        if (mounted) {
+          setState(() {
+            audioDuration = duration;
+          });
+        }
+      });
       
       // Check if audio URL is valid
       if (audioUrl != null && _isValidUrl(audioUrl!) && audioError == null) {
         setState(() {
           isAudioReady = true;
+          isInitializing = false;
         });
         print('✅ [ListeningWidget] Audio ready: $audioUrl');
       } else {
         setState(() {
           isAudioReady = false;
+          isInitializing = false;
           audioError = audioError ?? 'URL audio không hợp lệ';
         });
         print('⚠️ [ListeningWidget] Audio not ready: $audioError');
       }
       
     } catch (e) {
-      print('❌ Error initializing audio: $e');
+      print('❌ [ListeningWidget] Error initializing audio: $e');
       setState(() {
-        audioError = 'Không thể khởi tạo audio player';
+        audioError = 'Không thể khởi tạo audio player: $e';
         isAudioReady = false;
+        isInitializing = false;
       });
     }
   }
@@ -138,7 +209,7 @@ class _ListeningWidgetState extends State<ListeningWidget> {
   }
 
   Future<void> _playAudio() async {
-    if (audioUrl == null || playCount >= maxPlayCount || !isAudioReady) {
+    if (audioUrl == null || playCount >= maxPlayCount || !isAudioReady || isInitializing) {
       return;
     }
 
@@ -161,15 +232,35 @@ class _ListeningWidgetState extends State<ListeningWidget> {
         );
       }
     } catch (e) {
-      print('❌ Error playing audio: $e');
+      print('❌ [ListeningWidget] Error playing audio: $e');
+      
+      // Handle specific web audio errors
+      String errorMessage = 'Không thể phát audio';
+      if (e.toString().contains('disposed')) {
+        errorMessage = 'Audio player bị lỗi, đang thử lại...';
+        // Try to reinitialize audio service
+        try {
+          await _audioService.dispose();
+          await _initializeAudio();
+          // Don't show error snackbar for this case
+          return;
+        } catch (reinitError) {
+          errorMessage = 'Không thể khởi tạo lại audio player';
+        }
+      } else if (e.toString().contains('timeout')) {
+        errorMessage = 'Audio quá tải, vui lòng thử lại';
+      } else if (e.toString().contains('Invalid audio URL')) {
+        errorMessage = 'URL audio không hợp lệ';
+      }
+      
       setState(() {
-        audioError = 'Không thể phát audio: ${e.toString()}';
+        audioError = errorMessage;
       });
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ $audioError'),
+            content: Text('❌ $errorMessage'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -182,7 +273,7 @@ class _ListeningWidgetState extends State<ListeningWidget> {
     try {
       await _audioService.pauseAudio();
     } catch (e) {
-      print('❌ Error pausing audio: $e');
+      print('❌ [ListeningWidget] Error pausing audio: $e');
     }
   }
 
@@ -190,7 +281,7 @@ class _ListeningWidgetState extends State<ListeningWidget> {
     try {
       await _audioService.resumeAudio();
     } catch (e) {
-      print('❌ Error resuming audio: $e');
+      print('❌ [ListeningWidget] Error resuming audio: $e');
     }
   }
 
@@ -198,8 +289,16 @@ class _ListeningWidgetState extends State<ListeningWidget> {
     try {
       await _audioService.stopAudio();
     } catch (e) {
-      print('❌ Error stopping audio: $e');
+      print('❌ [ListeningWidget] Error stopping audio: $e');
     }
+  }
+
+  String _formatDuration(Duration? duration) {
+    if (duration == null) return '--:--';
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    String twoDigitMinutes = twoDigits(duration.inMinutes.remainder(60));
+    String twoDigitSeconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$twoDigitMinutes:$twoDigitSeconds";
   }
 
   @override
@@ -233,6 +332,32 @@ class _ListeningWidgetState extends State<ListeningWidget> {
               ),
               
               const SizedBox(height: 16),
+              
+              // Loading Indicator
+              if (isInitializing) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(AppThemes.primaryGreen),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Đang khởi tạo audio...',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppThemes.lightSecondaryLabel,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
               
               // Audio Error Display
               if (audioError != null) ...[
@@ -268,20 +393,20 @@ class _ListeningWidgetState extends State<ListeningWidget> {
                 children: [
                   // Play/Pause Button
                   GestureDetector(
-                    onTap: isAudioReady && audioError == null 
+                    onTap: isAudioReady && audioError == null && !isInitializing
                       ? (_audioService.isPlaying ? _pauseAudio : _playAudio) 
                       : null,
                     child: Container(
                       width: 60,
                       height: 60,
                       decoration: BoxDecoration(
-                        color: isAudioReady && audioError == null 
+                        color: isAudioReady && audioError == null && !isInitializing
                           ? AppThemes.primaryGreen 
                           : Colors.grey,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: (isAudioReady && audioError == null 
+                            color: (isAudioReady && audioError == null && !isInitializing
                               ? AppThemes.primaryGreen 
                               : Colors.grey).withOpacity(0.3),
                             blurRadius: 8,
@@ -290,7 +415,7 @@ class _ListeningWidgetState extends State<ListeningWidget> {
                         ],
                       ),
                       child: Icon(
-                        isAudioReady && audioError == null
+                        isAudioReady && audioError == null && !isInitializing
                           ? (_audioService.isPlaying ? Icons.pause : Icons.play_arrow)
                           : Icons.volume_off,
                         color: Colors.white,
@@ -303,19 +428,19 @@ class _ListeningWidgetState extends State<ListeningWidget> {
                   
                   // Stop Button
                   GestureDetector(
-                    onTap: isAudioReady && audioError == null ? _stopAudio : null,
+                    onTap: isAudioReady && audioError == null && !isInitializing ? _stopAudio : null,
                     child: Container(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
-                        color: isAudioReady && audioError == null 
+                        color: isAudioReady && audioError == null && !isInitializing
                           ? AppThemes.systemGray4 
                           : Colors.grey.shade300,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.stop,
-                        color: isAudioReady && audioError == null 
+                        color: isAudioReady && audioError == null && !isInitializing
                           ? Colors.white 
                           : Colors.grey.shade600,
                         size: 24,
@@ -326,6 +451,44 @@ class _ListeningWidgetState extends State<ListeningWidget> {
               ),
               
               const SizedBox(height: 12),
+              
+              // Audio Progress (if available)
+              if (audioDuration != null && audioDuration!.inSeconds > 0) ...[
+                Column(
+                  children: [
+                    // Progress Bar
+                    LinearProgressIndicator(
+                      value: audioDuration!.inMilliseconds > 0 
+                        ? currentPosition.inMilliseconds / audioDuration!.inMilliseconds 
+                        : 0.0,
+                      backgroundColor: AppThemes.systemGray4,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppThemes.primaryGreen),
+                    ),
+                    const SizedBox(height: 8),
+                    // Time Display
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(currentPosition),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppThemes.lightSecondaryLabel,
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(audioDuration),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppThemes.lightSecondaryLabel,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
               
               // Play Count Indicator
               Text(
@@ -340,7 +503,7 @@ class _ListeningWidgetState extends State<ListeningWidget> {
               ),
               
               // Audio URL Debug Info (only in debug mode)
-              if (audioUrl != null) ...[
+              if (kDebugMode && audioUrl != null) ...[
                 const SizedBox(height: 8),
                 Text(
                   'Audio: ${audioUrl!.length > 50 ? audioUrl!.substring(0, 50) + '...' : audioUrl}',
@@ -412,95 +575,95 @@ class _ListeningWidgetState extends State<ListeningWidget> {
                 final optionLetter = String.fromCharCode(65 + index); // A, B, C, D...
                 final isSelected = selectedOptionIndex == index;
              
-             return Container(
-               margin: const EdgeInsets.only(bottom: 12),
-               child: Material(
-                 borderRadius: BorderRadius.circular(16),
-                 elevation: isSelected ? 4 : 2,
-                 child: InkWell(
-                   onTap: () => _handleOptionSelected(index),
+               return Container(
+                 margin: const EdgeInsets.only(bottom: 12),
+                 child: Material(
                    borderRadius: BorderRadius.circular(16),
-                   child: Container(
-                     padding: const EdgeInsets.all(20),
-                     decoration: BoxDecoration(
-                       color: isSelected 
-                         ? AppThemes.primaryGreen.withOpacity(0.1)
-                         : AppThemes.lightBackground,
-                       borderRadius: BorderRadius.circular(16),
-                       border: Border.all(
+                   elevation: isSelected ? 4 : 2,
+                   child: InkWell(
+                     onTap: () => _handleOptionSelected(index),
+                     borderRadius: BorderRadius.circular(16),
+                     child: Container(
+                       padding: const EdgeInsets.all(20),
+                       decoration: BoxDecoration(
                          color: isSelected 
-                           ? AppThemes.primaryGreen 
-                           : AppThemes.systemGray4, 
-                         width: isSelected ? 2 : 1,
+                           ? AppThemes.primaryGreen.withOpacity(0.1)
+                           : AppThemes.lightBackground,
+                         borderRadius: BorderRadius.circular(16),
+                         border: Border.all(
+                           color: isSelected 
+                             ? AppThemes.primaryGreen 
+                             : AppThemes.systemGray4, 
+                           width: isSelected ? 2 : 1,
+                         ),
                        ),
-                     ),
-                     child: Row(
-                       children: [
-                         // Option letter circle
-                         Container(
-                           width: 40,
-                           height: 40,
-                           decoration: BoxDecoration(
-                             color: isSelected 
-                               ? AppThemes.primaryGreen
-                               : AppThemes.primaryGreen.withOpacity(0.1),
-                             shape: BoxShape.circle,
-                             border: Border.all(
+                       child: Row(
+                         children: [
+                           // Option letter circle
+                           Container(
+                             width: 40,
+                             height: 40,
+                             decoration: BoxDecoration(
                                color: isSelected 
                                  ? AppThemes.primaryGreen
-                                 : AppThemes.primaryGreen.withOpacity(0.3),
-                             ),
-                           ),
-                           child: Center(
-                             child: Text(
-                               optionLetter,
-                               style: TextStyle(
-                                 fontSize: 16,
-                                 fontWeight: FontWeight.bold,
+                                 : AppThemes.primaryGreen.withOpacity(0.1),
+                               shape: BoxShape.circle,
+                               border: Border.all(
                                  color: isSelected 
-                                   ? Colors.white
-                                   : AppThemes.primaryGreen,
+                                   ? AppThemes.primaryGreen
+                                   : AppThemes.primaryGreen.withOpacity(0.3),
+                               ),
+                             ),
+                             child: Center(
+                               child: Text(
+                                 optionLetter,
+                                 style: TextStyle(
+                                   fontSize: 16,
+                                   fontWeight: FontWeight.bold,
+                                   color: isSelected 
+                                     ? Colors.white
+                                     : AppThemes.primaryGreen,
+                                 ),
                                ),
                              ),
                            ),
-                         ),
-                         const SizedBox(width: 16),
-                         // Option text
-                         Expanded(
-                           child: Text(
-                             option,
-                             style: TextStyle(
-                               fontSize: 16,
-                               fontWeight: FontWeight.w500,
-                               color: isSelected 
-                                 ? AppThemes.primaryGreen
-                                 : AppThemes.lightLabel,
-                               height: 1.4,
+                           const SizedBox(width: 16),
+                           // Option text
+                           Expanded(
+                             child: Text(
+                               option,
+                               style: TextStyle(
+                                 fontSize: 16,
+                                 fontWeight: FontWeight.w500,
+                                 color: isSelected 
+                                   ? AppThemes.primaryGreen
+                                   : AppThemes.lightLabel,
+                                 height: 1.4,
+                               ),
                              ),
                            ),
-                         ),
-                         // Selection indicator
-                         if (isSelected)
-                           Icon(
-                             Icons.check_circle,
-                             color: AppThemes.primaryGreen,
-                             size: 24,
-                           )
-                         else
-                           Icon(
-                             Icons.arrow_forward_ios,
-                             color: AppThemes.systemGray4,
-                             size: 16,
-                           ),
-                       ],
+                           // Selection indicator
+                           if (isSelected)
+                             Icon(
+                               Icons.check_circle,
+                               color: AppThemes.primaryGreen,
+                               size: 24,
+                             )
+                           else
+                             Icon(
+                               Icons.arrow_forward_ios,
+                               color: AppThemes.systemGray4,
+                               size: 16,
+                             ),
+                         ],
+                       ),
                      ),
                    ),
                  ),
-               ),
-             );
-           },
+               );
+             },
+           ),
          ),
-       ),
        ] else ...[
          // No options available
          Expanded(

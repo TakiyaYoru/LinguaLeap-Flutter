@@ -18,6 +18,8 @@ dependencies:
   # HTTP & GraphQL
   dio: ^5.4.3+1
   graphql_flutter: ^5.2.0-beta.6
+  http: ^1.1.0  # ← NEW: HTTP client for speech recognition APIs
+  flutter_dotenv: ^5.1.0  # ← NEW: Environment variables support
   
   # State Management
   provider: ^6.1.2
@@ -30,7 +32,8 @@ dependencies:
   audioplayers: ^5.2.1
   firebase_core: ^2.32.0
   permission_handler: ^11.1.0
-  universal_io: ^2.2.2  
+  universal_io: ^2.2.2
+  record: ^5.0.4  # ← NEW: Audio recording for speaking exercises
   
   # UI
   cupertino_icons: ^1.0.6
@@ -43,4 +46,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/banner/banner-vip.jpg
+    - assets/banner/banner-vip.jpg 
