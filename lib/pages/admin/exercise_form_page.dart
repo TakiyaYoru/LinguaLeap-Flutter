@@ -62,7 +62,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
 
   // True/False
   final _statementController = TextEditingController();
-  bool _isStatementTrue = true;
+  bool _isStatementTrue = true; // For true/false exercises
 
   // Word Matching
   final List<TextEditingController> _wordControllers = [
@@ -197,6 +197,11 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       _statementController.text = 'This is a true statement.';
       
       // Set default words for matching
+      
+      // Auto-fill AI suggestion for supported exercise types
+      if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+        _aiContextController.text = _generateAISuggestion();
+      }
       _wordControllers[0].text = 'Hello';
       _definitionControllers[0].text = 'Xin chào';
       _wordControllers[1].text = 'Goodbye';
@@ -270,7 +275,83 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       final content = exercise.content;
       if (content != null) {
         // Parse content based on exercise type
-        // This would need to be implemented based on your content structure
+        switch (exercise.type) {
+          case 'multiple_choice':
+            if (content['options'] != null && content['options'] is List) {
+              final options = content['options'] as List;
+              for (int i = 0; i < options.length && i < _optionControllers.length; i++) {
+                _optionControllers[i].text = options[i].toString();
+              }
+            }
+            if (content['correctAnswer'] != null) {
+              _correctOptionIndex = content['correctAnswer'] as int;
+            }
+            break;
+            
+          case 'fill_blank':
+            if (content['sentence'] != null) {
+              _sentenceController.text = content['sentence'].toString();
+            }
+            if (content['correctAnswer'] != null) {
+              _correctAnswerController.text = content['correctAnswer'].toString();
+            }
+            break;
+            
+          case 'true_false':
+            if (content['statement'] != null) {
+              _statementController.text = content['statement'].toString();
+            }
+            if (content['isTrue'] != null) {
+              _isStatementTrue = content['isTrue'] as bool;
+            }
+            break;
+          case 'translation':
+            if (content['sourceText'] != null) {
+              _sourceTextController.text = content['sourceText'].toString();
+            }
+            if (content['targetText'] != null) {
+              _targetTextController.text = content['targetText'].toString();
+            }
+            break;
+          case 'word_matching':
+            if (content['pairs'] != null && content['pairs'] is List) {
+              final pairs = content['pairs'] as List;
+              for (int i = 0; i < pairs.length && i < _wordControllers.length; i++) {
+                final pair = pairs[i] as Map<String, dynamic>;
+                if (pair['word'] != null) {
+                  _wordControllers[i].text = pair['word'].toString();
+                }
+                if (pair['meaning'] != null) {
+                  _definitionControllers[i].text = pair['meaning'].toString();
+                }
+              }
+            }
+            break;
+            
+          case 'word_matching':
+            if (content['pairs'] != null && content['pairs'] is List) {
+              final pairs = content['pairs'] as List;
+              for (int i = 0; i < pairs.length && i < _wordControllers.length; i++) {
+                final pair = pairs[i] as Map<String, dynamic>;
+                if (pair['word'] != null) {
+                  _wordControllers[i].text = pair['word'].toString();
+                }
+                if (pair['meaning'] != null) {
+                  _definitionControllers[i].text = pair['meaning'].toString();
+                }
+              }
+            }
+            break;
+            
+          case 'sentence_building':
+            if (content['words'] != null && content['words'] is List) {
+              final words = content['words'] as List;
+              for (int i = 0; i < words.length && i < _wordOrderControllers.length; i++) {
+                _wordOrderControllers[i].text = words[i].toString();
+              }
+            }
+            break;
+        }
       }
     } catch (e) {
       print('❌ Error loading exercise specific content: $e');
@@ -300,22 +381,23 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       case 'true_false':
         return {
           'statement': _statementController.text.trim(),
-          'correctAnswer': _isStatementTrue,
+          'isTrue': _isStatementTrue,
         };
       
       case 'word_matching':
-        final words = <String>[];
-        final definitions = <String>[];
+        final pairs = <Map<String, String>>[];
         for (int i = 0; i < _wordControllers.length; i++) {
           if (_wordControllers[i].text.trim().isNotEmpty && 
               _definitionControllers[i].text.trim().isNotEmpty) {
-            words.add(_wordControllers[i].text.trim());
-            definitions.add(_definitionControllers[i].text.trim());
+            pairs.add({
+              'word': _wordControllers[i].text.trim(),
+              'meaning': _definitionControllers[i].text.trim(),
+            });
           }
         }
         return {
-          'words': words,
-          'definitions': definitions,
+          'pairs': pairs,
+          'instruction': 'Ghép từ tiếng Anh với nghĩa tiếng Việt tương ứng',
         };
       
       case 'sentence_building':
@@ -478,7 +560,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     const SizedBox(height: 16),
                     
                     // AI Generation Section
-                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank') ...[
+                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') ...[
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -500,14 +582,29 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              TextFormField(
-                                controller: _aiContextController,
-                                decoration: InputDecoration(
-                                  labelText: 'AI Context/Idea',
-                                  hintText: _getAIHintText(),
-                                  border: const OutlineInputBorder(),
-                                ),
-                                maxLines: 3,
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: TextFormField(
+                                      controller: _aiContextController,
+                                      decoration: InputDecoration(
+                                        labelText: 'AI Context/Idea',
+                                        hintText: _getAIHintText(),
+                                        border: const OutlineInputBorder(),
+                                      ),
+                                      maxLines: 3,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching')
+                                    IconButton(
+                                      onPressed: () {
+                                        _aiContextController.text = _generateAISuggestion();
+                                      },
+                                      icon: const Icon(Icons.auto_fix_high, color: AppThemes.primaryGreen),
+                                      tooltip: 'Tự động điền gợi ý',
+                                    ),
+                                ],
                               ),
                               const SizedBox(height: 16),
                               SizedBox(
@@ -553,6 +650,10 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                           // Reset skill focus to first available option for new type
                           final availableSkills = _getSkillFocusOptions();
                           _selectedSkillFocus = availableSkills.isNotEmpty ? availableSkills.first : '';
+                          // Auto-fill AI suggestion when exercise type changes
+                          if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+                            _aiContextController.text = _generateAISuggestion();
+                          }
                         });
                       },
                     ),
@@ -601,6 +702,10 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                             onChanged: (value) {
                               setState(() {
                                 _selectedSkillFocus = value!;
+                                // Auto-fill AI suggestion when skill focus changes
+                                if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching') {
+                                  _aiContextController.text = _generateAISuggestion();
+                                }
                               });
                             },
                           ),
@@ -1290,119 +1395,122 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     if (_selectedType == 'multiple_choice') {
       return 'Ví dụ: "Tạo câu hỏi về số đếm tiếng Anh", "Bài tập về màu sắc cơ bản", "Câu hỏi về chào hỏi"';
     } else if (_selectedType == 'fill_blank') {
-      if (_selectedSkillFocus.isEmpty) {
-        return 'Ví dụ: "Tạo câu điền từ về chào hỏi", "Bài tập điền từ về số đếm", "Câu điền từ về màu sắc"';
-      } else {
-        return 'Ví dụ: "Tạo bài tập điền từ tập trung vào $_selectedSkillFocus", "Câu điền từ về chào hỏi với focus $_selectedSkillFocus"';
-      }
+      return 'Ví dụ: "Tạo câu điền từ về chào hỏi", "Bài tập điền từ về số đếm", "Câu điền từ về màu sắc"';
+    } else if (_selectedType == 'true_false') {
+      return 'Ví dụ: "Tạo câu đúng/sai về chào hỏi", "Bài tập đúng/sai về số đếm", "Câu đúng/sai về màu sắc"';
+    } else if (_selectedType == 'translation') {
+      return 'Ví dụ: "Tạo bài tập dịch về chào hỏi", "Bài tập dịch về số đếm", "Câu dịch về màu sắc"';
+    } else if (_selectedType == 'word_matching') {
+      return 'Ví dụ: "Tạo bài tập ghép từ về chào hỏi", "Bài tập ghép từ về số đếm", "Ghép từ về màu sắc"';
     }
     return 'Nhập ý tưởng cho bài tập...';
   }
 
+  // Generate AI suggestion based on exercise type and skill focus
+  String _generateAISuggestion() {
+    final skillFocusDisplay = _getSkillFocusDisplayName(_selectedSkillFocus);
+    
+    if (_selectedType == 'multiple_choice') {
+      return 'Tạo cho tôi câu hỏi với skill focus là $skillFocusDisplay với chủ đề _____';
+    } else if (_selectedType == 'fill_blank') {
+      return 'Tạo cho tôi câu điền từ với skill focus là $skillFocusDisplay với chủ đề _____';
+    } else if (_selectedType == 'true_false') {
+      return 'Tạo cho tôi câu đúng/sai với skill focus là $skillFocusDisplay với chủ đề _____';
+    } else if (_selectedType == 'translation') {
+      return 'Tạo cho tôi bài tập dịch thuật với skill focus là $skillFocusDisplay với chủ đề _____';
+    } else if (_selectedType == 'word_matching') {
+      return 'Tạo cho tôi bài tập ghép từ với skill focus là $skillFocusDisplay với chủ đề _____';
+    }
+    
+    return 'Tạo cho tôi bài tập với skill focus là $skillFocusDisplay với chủ đề _____';
+  }
+
+  // Get display name for skill focus
+  String _getSkillFocusDisplayName(String skillFocus) {
+    switch (skillFocus) {
+      case 'vocabulary': return 'Vocabulary';
+      case 'grammar': return 'Grammar';
+      case 'listening': return 'Listening';
+      case 'speaking': return 'Speaking';
+      case 'reading': return 'Reading';
+      case 'writing': return 'Writing';
+      case 'pronunciation': return 'Pronunciation';
+      case 'fluency': return 'Fluency';
+      case 'comprehension': return 'Comprehension';
+      case 'syntax': return 'Syntax';
+      default: return skillFocus.toUpperCase();
+    }
+  }
+
   List<String> _getSkillFocusOptions() {
     switch (_selectedType) {
-      case 'fill_blank':
-        return ['vocabulary', 'listening', 'reading', 'grammar', 'pronunciation'];
       case 'multiple_choice':
-        return ['vocabulary', 'grammar', 'comprehension'];
+        return ['vocabulary', 'grammar', 'listening', 'pronunciation'];
+      case 'fill_blank':
+        return ['vocabulary', 'grammar', 'listening', 'writing'];
       case 'listening':
-        return ['listening', 'pronunciation', 'comprehension'];
+        return ['listening'];
+      case 'translation':
+        return ['vocabulary', 'grammar', 'writing'];
       case 'speaking':
         return ['speaking', 'pronunciation', 'fluency'];
       case 'reading':
-        return ['reading', 'comprehension', 'vocabulary'];
-      case 'writing':
-        return ['writing', 'grammar', 'vocabulary'];
-      case 'translation':
-        return ['vocabulary', 'grammar', 'comprehension'];
+        return ['vocabulary', 'grammar', 'fluency'];
       case 'word_matching':
-        return ['vocabulary', 'comprehension'];
+        return ['vocabulary'];
       case 'sentence_building':
-        return ['grammar', 'vocabulary', 'syntax'];
+        return ['vocabulary', 'grammar', 'writing'];
       case 'true_false':
-        return ['comprehension', 'vocabulary', 'grammar'];
+        return ['vocabulary', 'grammar', 'listening'];
       case 'drag_drop':
-        return ['vocabulary', 'grammar', 'comprehension'];
+        return ['vocabulary', 'grammar', 'writing'];
       case 'listen_choose':
-        return ['listening', 'comprehension', 'pronunciation'];
+        return ['listening'];
       case 'speak_repeat':
         return ['speaking', 'pronunciation', 'fluency'];
       default:
-        return _skillFocuses;
+        return ['vocabulary', 'grammar', 'comprehension'];
     }
   }
 
   String _getQuestionHintText() {
     if (_selectedType == 'fill_blank') {
-      switch (_selectedSkillFocus) {
-        case 'vocabulary':
-          return 'Ví dụ: "Điền từ vào chỗ trống theo từ vựng"';
-        case 'listening':
-          return 'Ví dụ: "Điền từ vào chỗ trống, hãy nghe audio"';
-        case 'reading':
-          return 'Ví dụ: "Điền từ vào chỗ trống trong đoạn văn"';
-        case 'grammar':
-          return 'Ví dụ: "Điền từ vào chỗ trống theo ngữ pháp"';
-        case 'pronunciation':
-          return 'Ví dụ: "Điền từ vào chỗ trống và phát âm"';
-        default:
-          return 'Nhập câu hỏi cho bài tập...';
-      }
+      return 'Ví dụ: "Điền từ vào chỗ trống", "Complete the sentence"';
+    } else if (_selectedType == 'true_false') {
+      return 'Ví dụ: "Đọc câu và chọn đúng/sai", "True or False"';
+    } else if (_selectedType == 'translation') {
+      return 'Ví dụ: "Dịch câu sau sang tiếng Việt", "Translate to Vietnamese"';
+    } else if (_selectedType == 'word_matching') {
+      return 'Ví dụ: "Ghép từ tiếng Anh với nghĩa tiếng Việt", "Match words with meanings"';
     }
     return 'Nhập câu hỏi cho bài tập...';
   }
 
   bool _shouldShowAudioField() {
-    if (_selectedType == 'fill_blank') {
-      return _selectedSkillFocus == 'listening' || _selectedSkillFocus == 'pronunciation';
-    }
-    return true; // Show for other exercise types
+    return true; // Show for all exercise types
   }
 
   bool _shouldShowImageField() {
-    if (_selectedType == 'fill_blank') {
-      return false; // Hide for all fill_blank skills
-    }
-    return true; // Show for other exercise types
+    return true; // Show for all exercise types
   }
 
   bool _shouldShowVideoField() {
-    if (_selectedType == 'fill_blank') {
-      return false; // Hide for all fill_blank skills
-    }
-    return true; // Show for other exercise types
+    return true; // Show for all exercise types
   }
 
   String _getAudioLabelText() {
-    if (_selectedType == 'fill_blank') {
-      switch (_selectedSkillFocus) {
-        case 'listening':
-          return 'Audio URL (required) - Audio để nghe';
-        case 'pronunciation':
-          return 'Audio URL (required) - Audio để phát âm';
-        default:
-          return 'Audio URL (optional)';
-      }
-    }
     return 'Audio URL (optional)';
   }
 
   String _getDefaultQuestionText() {
     if (_selectedType == 'fill_blank') {
-      switch (_selectedSkillFocus) {
-        case 'vocabulary':
-          return 'Điền từ vào chỗ trống theo từ vựng';
-        case 'listening':
-          return 'Điền từ vào chỗ trống, hãy nghe audio';
-        case 'reading':
-          return 'Điền từ vào chỗ trống trong đoạn văn';
-        case 'grammar':
-          return 'Điền từ vào chỗ trống theo ngữ pháp';
-        case 'pronunciation':
-          return 'Điền từ vào chỗ trống và phát âm';
-        default:
-          return 'Điền từ vào chỗ trống';
-      }
+      return 'Điền từ vào chỗ trống';
+    } else if (_selectedType == 'true_false') {
+      return 'Đọc câu và chọn đúng/sai';
+    } else if (_selectedType == 'translation') {
+      return 'Dịch câu sau sang tiếng Việt';
+    } else if (_selectedType == 'word_matching') {
+      return 'Ghép từ tiếng Anh với nghĩa tiếng Việt';
     }
     return 'Câu hỏi bài tập';
   }
@@ -1464,8 +1572,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         'user_context': _aiContextController.text.trim(),
       };
       
-      // Add skill focus for all exercises
-      if (_selectedSkillFocus.isNotEmpty) {
+      // Add skill focus for exercises that support it
+      if (_selectedSkillFocus.isNotEmpty && _selectedType != 'fill_blank' && _selectedType != 'true_false' && _selectedType != 'translation' && _selectedType != 'word_matching') {
         aiContext['skill_focus'] = [_selectedSkillFocus];
       }
 
@@ -1515,6 +1623,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
   void _populateFormWithAIData(GeneratedExercise generatedExercise) {
     try {
       print('📝 [ExerciseForm] Populating form with AI data...');
+      print('📝 [ExerciseForm] Exercise type: ${generatedExercise.type}');
+      print('📝 [ExerciseForm] Exercise content: ${generatedExercise.content}');
       
       // Parse content based on exercise type
       if (generatedExercise.type == 'multiple_choice') {
@@ -1551,6 +1661,107 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
             _hintController.text = feedback['hint'].toString();
           }
         }
+      } else if (generatedExercise.type == 'true_false') {
+        final content = generatedExercise.content;
+        
+        // Set statement
+        if (content['statement'] != null) {
+          _statementController.text = content['statement'].toString();
+        }
+        
+        // Set correct answer
+        if (content['isTrue'] != null) {
+          _isStatementTrue = content['isTrue'] as bool;
+        }
+        
+        // Set question text based on skill focus
+        if (_questionTextController.text.isEmpty) {
+          _questionTextController.text = _getDefaultQuestionText();
+        }
+        
+        // Set feedback
+        if (content['feedback'] != null) {
+          final feedback = content['feedback'] as Map<String, dynamic>;
+          if (feedback['correct'] != null) {
+            _correctFeedbackController.text = feedback['correct'].toString();
+          }
+          if (feedback['incorrect'] != null) {
+            _incorrectFeedbackController.text = feedback['incorrect'].toString();
+          }
+          if (feedback['hint'] != null) {
+            _hintController.text = feedback['hint'].toString();
+          }
+        }
+      } else if (generatedExercise.type == 'translation') {
+        final content = generatedExercise.content;
+        
+        // Set source text
+        if (content['sourceText'] != null) {
+          _sourceTextController.text = content['sourceText'].toString();
+        }
+        
+        // Set target text
+        if (content['targetText'] != null) {
+          _targetTextController.text = content['targetText'].toString();
+        }
+        
+        // Set question text based on skill focus
+        if (_questionTextController.text.isEmpty) {
+          _questionTextController.text = _getDefaultQuestionText();
+        }
+        
+        // Set feedback
+        if (content['feedback'] != null) {
+          final feedback = content['feedback'] as Map<String, dynamic>;
+          if (feedback['correct'] != null) {
+            _correctFeedbackController.text = feedback['correct'].toString();
+          }
+          if (feedback['incorrect'] != null) {
+            _incorrectFeedbackController.text = feedback['incorrect'].toString();
+          }
+          if (feedback['hint'] != null) {
+            _hintController.text = feedback['hint'].toString();
+          }
+        }
+      } else if (generatedExercise.type == 'word_matching') {
+        final content = generatedExercise.content;
+        print('📝 [ExerciseForm] Word matching content: $content');
+        
+        // Set word pairs
+        if (content['pairs'] != null && content['pairs'] is List) {
+          final pairs = content['pairs'] as List;
+          print('📝 [ExerciseForm] Word pairs: $pairs');
+          for (int i = 0; i < pairs.length && i < _wordControllers.length; i++) {
+            final pair = pairs[i] as Map<String, dynamic>;
+            if (pair['word'] != null) {
+              _wordControllers[i].text = pair['word'].toString();
+              print('📝 [ExerciseForm] Set word $i: ${pair['word']}');
+            }
+            if (pair['meaning'] != null) {
+              _definitionControllers[i].text = pair['meaning'].toString();
+              print('📝 [ExerciseForm] Set meaning $i: ${pair['meaning']}');
+            }
+          }
+        }
+        
+        // Set question text based on skill focus
+        if (_questionTextController.text.isEmpty) {
+          _questionTextController.text = _getDefaultQuestionText();
+        }
+        
+        // Set feedback
+        if (content['feedback'] != null) {
+          final feedback = content['feedback'] as Map<String, dynamic>;
+          if (feedback['correct'] != null) {
+            _correctFeedbackController.text = feedback['correct'].toString();
+          }
+          if (feedback['incorrect'] != null) {
+            _incorrectFeedbackController.text = feedback['incorrect'].toString();
+          }
+          if (feedback['hint'] != null) {
+            _hintController.text = feedback['hint'].toString();
+          }
+        }
       } else if (generatedExercise.type == 'fill_blank') {
         final content = generatedExercise.content;
         
@@ -1569,35 +1780,26 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           _questionTextController.text = _getDefaultQuestionText();
         }
         
-        // Populate skill-specific data
-        if (_selectedSkillFocus.isNotEmpty) {
+        // Populate skill-specific data for non-fill_blank exercises
+        if (_selectedSkillFocus.isNotEmpty && generatedExercise.type != 'fill_blank' && generatedExercise.type != 'true_false' && generatedExercise.type != 'translation' && generatedExercise.type != 'word_matching') {
           print('🎯 [ExerciseForm] Populating skill-specific data for: $_selectedSkillFocus');
           
           // Handle vocabulary data
           if (_selectedSkillFocus == 'vocabulary' && content['vocabulary'] != null) {
             final vocab = content['vocabulary'] as Map<String, dynamic>;
             print('📚 Vocabulary data: $vocab');
-            // You can add specific UI fields for vocabulary data here
           }
           
           // Handle listening data
           if (_selectedSkillFocus == 'listening' && content['listening'] != null) {
             final listening = content['listening'] as Map<String, dynamic>;
             print('🎧 Listening data: $listening');
-            if (listening['audioText'] != null) {
-              // You can add audio text field here
-              print('🎵 Audio text: ${listening['audioText']}');
-            }
           }
           
           // Handle reading data
           if (_selectedSkillFocus == 'reading' && content['reading'] != null) {
             final reading = content['reading'] as Map<String, dynamic>;
             print('📖 Reading data: $reading');
-            if (reading['passage'] != null) {
-              // You can add passage field here
-              print('📄 Passage: ${reading['passage']}');
-            }
           }
           
           // Handle grammar data
@@ -1640,6 +1842,7 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       }
       
       print('✅ [ExerciseForm] Form populated with AI data');
+      setState(() {}); // Trigger UI update
       
     } catch (e) {
       print('❌ [ExerciseForm] Error populating form with AI data: $e');

@@ -45,10 +45,10 @@ class ExerciseService {
           },
           fetchPolicy: FetchPolicy.networkOnly,
           errorPolicy: ErrorPolicy.all,
-        )).timeout(
-          const Duration(seconds: 60),
+        )        ).timeout(
+          const Duration(seconds: 120), // Tăng timeout lên 2 phút
           onTimeout: () {
-            throw Exception('AI generation timeout after 60 seconds');
+            throw Exception('AI generation timeout after 120 seconds');
           },
         );
 
@@ -63,6 +63,8 @@ class ExerciseService {
         }
 
         final exerciseData = result.data?['generateExercise'];
+        print('📝 [ExerciseService] Raw exercise data: $exerciseData');
+        
         if (exerciseData == null) {
           if (attempt < maxRetries) {
             print('🔄 [ExerciseService] No data returned, retrying...');
@@ -74,6 +76,7 @@ class ExerciseService {
 
         final generatedExercise = GeneratedExercise.fromJson(exerciseData);
         print('✅ [ExerciseService] Generated exercise: ${generatedExercise.type}');
+        print('📝 [ExerciseService] Exercise content: ${generatedExercise.content}');
         return generatedExercise;
       } catch (e) {
         print('❌ [ExerciseService] Exception generating exercise (Attempt $attempt): $e');

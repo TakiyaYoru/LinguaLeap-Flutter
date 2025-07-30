@@ -35,6 +35,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
   bool isLessonCompleted = false;
   Set<String> completedExercises = {};
   String? _currentFillBlankAnswer; // Store current fill blank answer
+  final TextEditingController _translationController = TextEditingController(); // For translation exercises
 
   // Animation controllers for enhanced UI
   late AnimationController _progressAnimationController;
@@ -81,6 +82,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
   void dispose() {
     _progressAnimationController.dispose();
     _feedbackController.dispose();
+    _translationController.dispose();
     super.dispose();
   }
 
@@ -182,13 +184,68 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         try {
           final content = jsonDecode(exercise['content'] as String);
           final correctAnswer = content['correctAnswer'] as String?;
+          final alternatives = content['alternatives'] as List<dynamic>? ?? [];
           final userAnswer = _currentFillBlankAnswer ?? selectedAnswer.toString();
           
           if (correctAnswer != null) {
-            return userAnswer.toLowerCase().trim() == correctAnswer.toLowerCase().trim();
+            // Kiểm tra đáp án chính
+            if (userAnswer.toLowerCase().trim() == correctAnswer.toLowerCase().trim()) {
+              return true;
+            }
+            // Kiểm tra các đáp án thay thế
+            for (final alternative in alternatives) {
+              if (userAnswer.toLowerCase().trim() == alternative.toString().toLowerCase().trim()) {
+                return true;
+              }
+            }
           }
         } catch (e) {
           print('❌ Error parsing fill_blank content: $e');
+        }
+        return false;
+      case 'true_false':
+        // Logic cho true/false
+        try {
+          final content = jsonDecode(exercise['content'] as String);
+          final isTrue = content['isTrue'] as bool?;
+          final userAnswer = _currentFillBlankAnswer == 'true';
+          
+          if (isTrue != null) {
+            return userAnswer == isTrue;
+          }
+        } catch (e) {
+          print('❌ Error parsing true_false content: $e');
+        }
+        return false;
+      case 'translation':
+        // Logic cho translation
+        try {
+          final content = jsonDecode(exercise['content'] as String);
+          final targetText = content['targetText'] as String?;
+          final userAnswer = _currentFillBlankAnswer ?? '';
+          
+          if (targetText != null) {
+            // So sánh đơn giản, có thể cải thiện bằng fuzzy matching
+            return userAnswer.toLowerCase().trim() == targetText.toLowerCase().trim();
+          }
+        } catch (e) {
+          print('❌ Error parsing translation content: $e');
+        }
+        return false;
+      case 'word_matching':
+        // Logic cho word matching
+        try {
+          final content = jsonDecode(exercise['content'] as String);
+          final pairs = content['pairs'] as List<dynamic>? ?? [];
+          final userAnswer = _currentFillBlankAnswer ?? '';
+          
+          if (pairs.isNotEmpty) {
+            // Simplified check - in a real app you'd want to check all pairs
+            // For now, just check if user has made any selection
+            return userAnswer.isNotEmpty;
+          }
+        } catch (e) {
+          print('❌ Error parsing word_matching content: $e');
         }
         return false;
       default:
@@ -246,60 +303,103 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     
     return Column(
       children: [
-        // Sentence with blank
+        // Sentence with blank - enhanced styling
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppThemes.lightBackground,
+            color: AppThemes.primaryGreen.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppThemes.systemGray4),
+            border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
           ),
-          child: Text(
-            sentence,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              color: AppThemes.lightLabel,
-            ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.edit_note, color: AppThemes.primaryGreen, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Điền từ vào chỗ trống:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                sentence,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppThemes.lightLabel,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         
         const SizedBox(height: 24),
         
-        // Answer input
+        // Answer input with enhanced styling
         TextFormField(
           controller: answerController,
-          decoration: const InputDecoration(
-            labelText: 'Your answer',
-            border: OutlineInputBorder(),
-            hintText: 'Type your answer here...',
+          decoration: InputDecoration(
+            labelText: 'Đáp án của bạn',
+            hintText: 'Nhập từ cần điền...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.systemGray4),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.systemGray4),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.primaryGreen, width: 2),
+            ),
+            filled: true,
+            fillColor: AppThemes.lightBackground,
+            prefixIcon: Icon(Icons.keyboard, color: AppThemes.primaryGreen),
           ),
           style: const TextStyle(fontSize: 16),
+          textAlign: TextAlign.center,
+          onFieldSubmitted: (answer) {
+            if (answer.trim().isNotEmpty) {
+              _handleFillBlankAnswer(answer.trim());
+            }
+          },
         ),
         
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         
-        // Submit button
+        // Submit button with enhanced styling
         SizedBox(
           width: double.infinity,
-          child: ElevatedButton(
+          child: ElevatedButton.icon(
             onPressed: () {
               final answer = answerController.text.trim();
               if (answer.isNotEmpty) {
                 _handleFillBlankAnswer(answer);
               }
             },
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: const Text(
+              'Kiểm tra đáp án',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppThemes.primaryGreen,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            child: const Text(
-              'Submit Answer',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              elevation: 2,
             ),
           ),
         ),
@@ -313,40 +413,573 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     _handleAnswer(0); // Use 0 as index, but we'll use _currentFillBlankAnswer in _checkAnswer
   }
 
+  Widget _buildTrueFalseWidget(Map<String, dynamic> content) {
+    final statement = content['statement'] as String? ?? '';
+    
+    return Column(
+      children: [
+        // Statement display with enhanced styling
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.quiz, color: AppThemes.primaryGreen, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Đọc câu và chọn đúng/sai:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                statement,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppThemes.lightLabel,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 32),
+        
+        // True/False buttons with enhanced styling
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 2,
+                  child: InkWell(
+                    onTap: () => _handleTrueFalseAnswer(true),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.green.withOpacity(0.3), width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.check_circle_outline, color: Colors.green, size: 24),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'ĐÚNG',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.only(left: 8),
+                child: Material(
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: 2,
+                  child: InkWell(
+                    onTap: () => _handleTrueFalseAnswer(false),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.red.withOpacity(0.3), width: 2),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(Icons.cancel_outlined, color: Colors.red, size: 24),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'SAI',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _handleTrueFalseAnswer(bool isTrue) {
+    // Store the answer for true/false exercises
+    _currentFillBlankAnswer = isTrue.toString();
+    _handleAnswer(isTrue ? 0 : 1); // Use 0 for true, 1 for false
+  }
+
+  Widget _buildTranslationWidget(Map<String, dynamic> content) {
+    final sourceText = content['sourceText'] as String? ?? '';
+    
+    return Column(
+      children: [
+        // Source text display with enhanced styling
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.translate, color: AppThemes.primaryGreen, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Dịch câu sau:',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.primaryGreen,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                sourceText,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                  color: AppThemes.lightLabel,
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Translation input field with enhanced styling
+        TextFormField(
+          controller: _translationController,
+          onFieldSubmitted: (value) => _handleTranslationAnswer(value),
+          decoration: InputDecoration(
+            labelText: 'Bản dịch tiếng Việt',
+            hintText: 'Nhập bản dịch của bạn...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.systemGray4),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.systemGray4),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppThemes.primaryGreen, width: 2),
+            ),
+            filled: true,
+            fillColor: AppThemes.lightBackground,
+            prefixIcon: Icon(Icons.edit, color: AppThemes.primaryGreen),
+          ),
+          maxLines: 3,
+          style: const TextStyle(
+            fontSize: 16,
+            color: AppThemes.lightLabel,
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Submit button with enhanced styling
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleTranslationAnswer(_translationController.text),
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: const Text(
+              'Kiểm tra đáp án',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppThemes.primaryGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleTranslationAnswer(String answer) {
+    // Store the answer for translation exercises
+    _currentFillBlankAnswer = answer;
+    _handleAnswer(0); // For translation, we'll check the answer in _checkAnswer method
+  }
+
+  Widget _buildWordMatchingWidget(Map<String, dynamic> content) {
+    final pairs = content['pairs'] as List<dynamic>? ?? [];
+    final instruction = content['instruction'] as String? ?? 'Ghép từ tiếng Anh với nghĩa tiếng Việt';
+    
+    // Shuffle the meanings for matching
+    final meanings = pairs.map((pair) => pair['meaning'] as String).toList()..shuffle();
+    
+    return Column(
+      children: [
+        // Instruction
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.link, color: AppThemes.primaryGreen, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  instruction,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppThemes.primaryGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Word-Matching pairs
+        Expanded(
+          child: ListView.builder(
+            itemCount: pairs.length,
+            itemBuilder: (context, index) {
+              final pair = pairs[index];
+              final word = pair['word'] as String? ?? '';
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    // English word
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppThemes.lightBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppThemes.systemGray4),
+                        ),
+                        child: Text(
+                          word,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: AppThemes.lightLabel,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    
+                    // Arrow
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        color: AppThemes.primaryGreen,
+                        size: 24,
+                      ),
+                    ),
+                    
+                    // Meaning dropdown
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppThemes.lightBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppThemes.systemGray4),
+                        ),
+                        child: DropdownButton<String>(
+                          value: null, // Will be set when user selects
+                          hint: Text(
+                            'Chọn nghĩa',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppThemes.systemGray3,
+                            ),
+                          ),
+                          isExpanded: true,
+                          underline: const SizedBox.shrink(),
+                          items: meanings.map((meaning) {
+                            return DropdownMenuItem(
+                              value: meaning,
+                              child: Text(
+                                meaning,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: AppThemes.lightLabel,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (selectedMeaning) {
+                            // Handle selection
+                            _handleWordMatchingAnswer(index, selectedMeaning ?? '');
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Submit button
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () => _handleAnswer(0), // Check all matches
+            icon: const Icon(Icons.check_circle_outline, size: 20),
+            label: const Text(
+              'Kiểm tra đáp án',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppThemes.primaryGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleWordMatchingAnswer(int index, String selectedMeaning) {
+    // Store the answer for word matching exercises
+    // This is a simplified approach - in a real app you'd want to store all matches
+    _currentFillBlankAnswer = selectedMeaning;
+  }
+
+  Widget _buildMultipleChoiceWidget(List<dynamic> options) {
+    return ListView.builder(
+      itemCount: options.length,
+      itemBuilder: (context, index) {
+        final option = options[index].toString();
+        final optionLetter = String.fromCharCode(65 + index); // A, B, C, D...
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            borderRadius: BorderRadius.circular(16),
+            elevation: 2,
+            child: InkWell(
+              onTap: () => _handleAnswer(index),
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppThemes.lightBackground,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppThemes.systemGray4, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    // Option letter circle
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: AppThemes.primaryGreen.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+                      ),
+                      child: Center(
+                        child: Text(
+                          optionLetter,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppThemes.primaryGreen,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    // Option text
+                    Expanded(
+                      child: Text(
+                        option,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                          color: AppThemes.lightLabel,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                    // Arrow icon
+                    Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppThemes.systemGray4,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _showCorrectAnswerDialog() {
     final exercise = exercises[currentExerciseIndex];
     final feedback = exercise['feedback'] as Map<String, dynamic>?;
     final correctMessage = feedback?['correct'] ?? 'Đúng rồi!';
+    final hintMessage = feedback?['hint'] ?? '';
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: AppThemes.primaryGreen,
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppThemes.primaryGreen,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white, size: 32),
+              SizedBox(width: 12),
+              Text(
+                'Chính xác! 🎉',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.check_circle, color: Colors.white, size: 32),
-            SizedBox(width: 12),
-            Text('Correct!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(
+              correctMessage,
+              style: const TextStyle(color: AppThemes.lightLabel, fontSize: 16, height: 1.4),
+            ),
+            if (hintMessage.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppThemes.primaryGreen.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: AppThemes.primaryGreen, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        hintMessage,
+                        style: TextStyle(
+                          color: AppThemes.primaryGreen,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
-        content: Text(
-          correctMessage,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _nextExercise();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppThemes.primaryGreen,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _nextExercise();
+              },
+              icon: const Icon(Icons.arrow_forward, size: 20),
+              label: const Text(
+                'Tiếp tục',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppThemes.primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+              ),
             ),
-            child: const Text('CONTINUE', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -357,38 +990,94 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     final exercise = exercises[currentExerciseIndex];
     final feedback = exercise['feedback'] as Map<String, dynamic>?;
     final incorrectMessage = feedback?['incorrect'] ?? 'Chưa đúng, hãy thử lại!';
+    final hintMessage = feedback?['hint'] ?? '';
     
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: AppThemes.hearts,
-        title: const Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppThemes.hearts,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.cancel, color: Colors.white, size: 32),
+              SizedBox(width: 12),
+              Text(
+                'Chưa đúng! 💪',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.cancel, color: Colors.white, size: 32),
-            SizedBox(width: 12),
-            Text('Wrong!', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            Text(
+              incorrectMessage,
+              style: const TextStyle(color: AppThemes.lightLabel, fontSize: 16, height: 1.4),
+            ),
+            if (hintMessage.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppThemes.hearts.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppThemes.hearts.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.lightbulb_outline, color: AppThemes.hearts, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        hintMessage,
+                        style: TextStyle(
+                          color: AppThemes.hearts,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
-        content: Text(
-          incorrectMessage,
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-        ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Đưa câu hỏi về cuối để làm lại
-              final wrongExercise = exercises.removeAt(currentExerciseIndex);
-              exercises.add(wrongExercise);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppThemes.hearts,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('TRY AGAIN', style: TextStyle(fontWeight: FontWeight.bold)),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    // Đưa câu hỏi về cuối để làm lại
+                    final wrongExercise = exercises.removeAt(currentExerciseIndex);
+                    exercises.add(wrongExercise);
+                  },
+                  icon: const Icon(Icons.refresh, size: 20),
+                  label: const Text(
+                    'Thử lại',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppThemes.hearts,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 2,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -702,7 +1391,11 @@ class _LessonDetailPageState extends State<LessonDetailPage>
       children: [
         // Question Design
         Text(
-          type == 'fill_blank' ? 'Fill in the blank' : 'Translate this sentence',
+          type == 'fill_blank' ? 'Fill in the blank' : 
+          type == 'true_false' ? 'True or False' : 
+          type == 'translation' ? 'Translate to Vietnamese' :
+          type == 'word_matching' ? 'Match words with meanings' :
+          'Choose the correct answer',
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -722,20 +1415,22 @@ class _LessonDetailPageState extends State<LessonDetailPage>
           ),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: AppThemes.primaryGreen,
-                  shape: BoxShape.circle,
+              if (type != 'fill_blank') ...[
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppThemes.primaryGreen,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.volume_up,
+                    color: Colors.white,
+                    size: 24,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.volume_up,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
+                const SizedBox(width: 16),
+              ],
               Expanded(
                 child: Text(
                   question,
@@ -744,6 +1439,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                     fontWeight: FontWeight.w500,
                     color: AppThemes.lightLabel,
                   ),
+                  textAlign: type == 'fill_blank' ? TextAlign.center : TextAlign.start,
                 ),
               ),
             ],
@@ -756,42 +1452,14 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         Expanded(
           child: type == 'fill_blank' 
             ? _buildFillBlankWidget(content)
-            : ListView.builder(
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final option = options[index].toString();
-                  
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Material(
-                      borderRadius: BorderRadius.circular(16),
-                      elevation: 0,
-                      child: InkWell(
-                        onTap: () => _handleAnswer(index),
-                        borderRadius: BorderRadius.circular(16),
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: AppThemes.lightBackground,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: AppThemes.systemGray4, width: 2),
-                          ),
-                          child: Text(
-                        option,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: AppThemes.lightLabel,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+            : type == 'true_false'
+            ? _buildTrueFalseWidget(content)
+            : type == 'translation'
+            ? _buildTranslationWidget(content)
+            : type == 'word_matching'
+            ? _buildWordMatchingWidget(content)
+            : _buildMultipleChoiceWidget(options),
           ),
-        ),
       ],
     );
   }
