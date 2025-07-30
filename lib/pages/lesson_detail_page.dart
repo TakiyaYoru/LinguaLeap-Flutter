@@ -37,6 +37,14 @@ class _LessonDetailPageState extends State<LessonDetailPage>
   String? _currentFillBlankAnswer; // Store current fill blank answer
   final TextEditingController _translationController = TextEditingController(); // For translation exercises
 
+  // Word Matching State Variables
+  Map<int, String> _wordMatchingSelections = {}; // wordIndex -> selectedMeaning
+  Map<int, bool> _wordMatchingCompleted = {}; // wordIndex -> isCompleted
+  Map<int, bool> _wordMatchingCorrect = {}; // wordIndex -> isCorrect
+  List<String> _wordMatchingAvailableMeanings = []; // Available meanings for selection
+  List<String> _wordMatchingOriginalMeanings = []; // Original meanings in order
+  List<Map<String, dynamic>> _wordMatchingPairs = []; // Original pairs
+
   // Animation controllers for enhanced UI
   late AnimationController _progressAnimationController;
   late AnimationController _feedbackController;
@@ -233,16 +241,20 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         }
         return false;
       case 'word_matching':
-        // Logic cho word matching
+        // Logic cho word matching - kiểm tra xem tất cả cặp đã đúng chưa
         try {
-          final content = jsonDecode(exercise['content'] as String);
-          final pairs = content['pairs'] as List<dynamic>? ?? [];
-          final userAnswer = _currentFillBlankAnswer ?? '';
-          
-          if (pairs.isNotEmpty) {
-            // Simplified check - in a real app you'd want to check all pairs
-            // For now, just check if user has made any selection
-            return userAnswer.isNotEmpty;
+          // Kiểm tra xem tất cả cặp đã được chọn và đúng chưa
+          if (_wordMatchingSelections.length == _wordMatchingPairs.length) {
+            for (int i = 0; i < _wordMatchingPairs.length; i++) {
+              final pair = _wordMatchingPairs[i];
+              final correctMeaning = pair['meaning'] as String;
+              final selectedMeaning = _wordMatchingSelections[i];
+              
+              if (selectedMeaning != correctMeaning) {
+                return false; // Có ít nhất 1 cặp sai
+              }
+            }
+            return true; // Tất cả cặp đều đúng
           }
         } catch (e) {
           print('❌ Error parsing word_matching content: $e');
@@ -662,8 +674,15 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     final pairs = content['pairs'] as List<dynamic>? ?? [];
     final instruction = content['instruction'] as String? ?? 'Ghép từ tiếng Anh với nghĩa tiếng Việt';
     
-    // Shuffle the meanings for matching
-    final meanings = pairs.map((pair) => pair['meaning'] as String).toList()..shuffle();
+    // Initialize word matching state if not already done
+    if (_wordMatchingPairs.isEmpty) {
+      _wordMatchingPairs = List<Map<String, dynamic>>.from(pairs);
+      _wordMatchingOriginalMeanings = pairs.map((pair) => pair['meaning'] as String).toList();
+      _wordMatchingAvailableMeanings = List<String>.from(_wordMatchingOriginalMeanings)..shuffle();
+      _wordMatchingSelections.clear();
+      _wordMatchingCompleted.clear();
+      _wordMatchingCorrect.clear();
+    }
     
     return Column(
       children: [
@@ -698,10 +717,14 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         // Word-Matching pairs
         Expanded(
           child: ListView.builder(
-            itemCount: pairs.length,
+            itemCount: _wordMatchingPairs.length,
             itemBuilder: (context, index) {
-              final pair = pairs[index];
+              final pair = _wordMatchingPairs[index];
               final word = pair['word'] as String? ?? '';
+              final correctMeaning = pair['meaning'] as String? ?? '';
+              final isCompleted = _wordMatchingCompleted[index] ?? false;
+              final isCorrect = _wordMatchingCorrect[index] ?? false;
+              final selectedMeaning = _wordMatchingSelections[index];
               
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -712,16 +735,23 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                       child: Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppThemes.lightBackground,
+                          color: isCompleted 
+                            ? (isCorrect ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1))
+                            : AppThemes.lightBackground,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppThemes.systemGray4),
+                          border: Border.all(
+                            color: isCompleted 
+                              ? (isCorrect ? Colors.green : Colors.red)
+                              : AppThemes.systemGray4,
+                            width: isCompleted ? 2 : 1,
+                          ),
                         ),
                         child: Text(
                           word,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
-                            color: AppThemes.lightLabel,
+                            color: isCompleted ? (isCorrect ? Colors.green : Colors.red) : AppThemes.lightLabel,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -732,49 +762,70 @@ class _LessonDetailPageState extends State<LessonDetailPage>
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 12),
                       child: Icon(
-                        Icons.arrow_forward,
-                        color: AppThemes.primaryGreen,
+                        isCompleted ? (isCorrect ? Icons.check_circle : Icons.cancel) : Icons.arrow_forward,
+                        color: isCompleted ? (isCorrect ? Colors.green : Colors.red) : AppThemes.primaryGreen,
                         size: 24,
                       ),
                     ),
                     
-                    // Meaning dropdown
+                    // Meaning selection
                     Expanded(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12),
                         decoration: BoxDecoration(
-                          color: AppThemes.lightBackground,
+                          color: isCompleted 
+                            ? (isCorrect ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1))
+                            : AppThemes.lightBackground,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppThemes.systemGray4),
-                        ),
-                        child: DropdownButton<String>(
-                          value: null, // Will be set when user selects
-                          hint: Text(
-                            'Chọn nghĩa',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppThemes.systemGray3,
-                            ),
+                          border: Border.all(
+                            color: isCompleted 
+                              ? (isCorrect ? Colors.green : Colors.red)
+                              : AppThemes.systemGray4,
+                            width: isCompleted ? 2 : 1,
                           ),
-                          isExpanded: true,
-                          underline: const SizedBox.shrink(),
-                          items: meanings.map((meaning) {
-                            return DropdownMenuItem(
-                              value: meaning,
+                        ),
+                        child: isCompleted
+                          ? Padding(
+                              padding: const EdgeInsets.all(16),
                               child: Text(
-                                meaning,
-                                style: const TextStyle(
+                                selectedMeaning ?? '',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                  color: isCorrect ? Colors.green : Colors.red,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            )
+                          : DropdownButton<String>(
+                              value: selectedMeaning,
+                              hint: Text(
+                                'Chọn nghĩa',
+                                style: TextStyle(
                                   fontSize: 14,
-                                  color: AppThemes.lightLabel,
+                                  color: AppThemes.systemGray3,
                                 ),
                               ),
-                            );
-                          }).toList(),
-                          onChanged: (selectedMeaning) {
-                            // Handle selection
-                            _handleWordMatchingAnswer(index, selectedMeaning ?? '');
-                          },
-                        ),
+                              isExpanded: true,
+                              underline: const SizedBox.shrink(),
+                              items: _wordMatchingAvailableMeanings.map((meaning) {
+                                return DropdownMenuItem(
+                                  value: meaning,
+                                  child: Text(
+                                    meaning,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      color: AppThemes.lightLabel,
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (selectedMeaning) {
+                                if (selectedMeaning != null) {
+                                  _handleWordMatchingSelection(index, selectedMeaning);
+                                }
+                              },
+                            ),
                       ),
                     ),
                   ],
@@ -786,30 +837,31 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         
         const SizedBox(height: 20),
         
-        // Submit button
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: () => _handleAnswer(0), // Check all matches
-            icon: const Icon(Icons.check_circle_outline, size: 20),
-            label: const Text(
-              'Kiểm tra đáp án',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
+        // Check button - only show if all pairs are selected
+        if (_wordMatchingSelections.length == _wordMatchingPairs.length)
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _checkWordMatchingAnswers(),
+              icon: const Icon(Icons.check_circle_outline, size: 20),
+              label: const Text(
+                'Kiểm tra đáp án',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppThemes.primaryGreen,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppThemes.primaryGreen,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 2,
               ),
-              elevation: 2,
             ),
           ),
-        ),
       ],
     );
   }
@@ -818,6 +870,144 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     // Store the answer for word matching exercises
     // This is a simplified approach - in a real app you'd want to store all matches
     _currentFillBlankAnswer = selectedMeaning;
+  }
+
+  void _handleWordMatchingSelection(int wordIndex, String selectedMeaning) {
+    setState(() {
+      _wordMatchingSelections[wordIndex] = selectedMeaning;
+    });
+  }
+
+  void _checkWordMatchingAnswers() {
+    setState(() {
+      bool allCorrect = true;
+      
+      // Check each pair
+      for (int i = 0; i < _wordMatchingPairs.length; i++) {
+        final pair = _wordMatchingPairs[i];
+        final correctMeaning = pair['meaning'] as String;
+        final selectedMeaning = _wordMatchingSelections[i];
+        
+        final isCorrect = selectedMeaning == correctMeaning;
+        
+        _wordMatchingCompleted[i] = true;
+        _wordMatchingCorrect[i] = isCorrect;
+        
+        if (!isCorrect) {
+          allCorrect = false;
+        }
+      }
+      
+      // If all correct, mark exercise as completed
+      if (allCorrect) {
+        final exercise = exercises[currentExerciseIndex];
+        final exerciseId = exercise['_id'];
+        _markExerciseCompleted(exerciseId, 100);
+        _showCorrectAnswerDialog();
+      } else {
+        // If any wrong, reset after showing feedback
+        _showWordMatchingWrongAnswerDialog();
+      }
+    });
+  }
+
+  void _showWordMatchingWrongAnswerDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        title: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppThemes.hearts,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.cancel, color: Colors.white, size: 32),
+              SizedBox(width: 12),
+              Text(
+                'Chưa đúng! 💪',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Hãy kiểm tra lại các cặp từ của bạn!',
+              style: TextStyle(color: AppThemes.lightLabel, fontSize: 16, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppThemes.hearts.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppThemes.hearts.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_outline, color: AppThemes.hearts, size: 20),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Các cặp sai sẽ được reset để bạn thử lại',
+                      style: TextStyle(
+                        color: AppThemes.hearts,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _resetWordMatchingWrongAnswers();
+              },
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text(
+                'Thử lại',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppThemes.hearts,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 2,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resetWordMatchingWrongAnswers() {
+    setState(() {
+      // Reset only wrong answers
+      for (int i = 0; i < _wordMatchingPairs.length; i++) {
+        if (_wordMatchingCorrect[i] == false) {
+          _wordMatchingSelections.remove(i);
+          _wordMatchingCompleted[i] = false;
+          _wordMatchingCorrect[i] = false;
+        }
+      }
+    });
   }
 
   Widget _buildMultipleChoiceWidget(List<dynamic> options) {
@@ -1133,6 +1323,13 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     if (currentExerciseIndex < exercises.length - 1) {
       setState(() {
         currentExerciseIndex++;
+        // Reset word matching state for new exercise
+        _wordMatchingSelections.clear();
+        _wordMatchingCompleted.clear();
+        _wordMatchingCorrect.clear();
+        _wordMatchingAvailableMeanings.clear();
+        _wordMatchingOriginalMeanings.clear();
+        _wordMatchingPairs.clear();
       });
       _updateProgress(); // Update progress animation
     } else {
@@ -1143,6 +1340,13 @@ class _LessonDetailPageState extends State<LessonDetailPage>
         // Còn exercises chưa completed, tiếp tục
         setState(() {
           currentExerciseIndex = 0; // Quay về đầu
+          // Reset word matching state for new exercise
+          _wordMatchingSelections.clear();
+          _wordMatchingCompleted.clear();
+          _wordMatchingCorrect.clear();
+          _wordMatchingAvailableMeanings.clear();
+          _wordMatchingOriginalMeanings.clear();
+          _wordMatchingPairs.clear();
         });
         _updateProgress();
       }
