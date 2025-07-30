@@ -7,7 +7,8 @@ class PlatformHelper {
     if (kIsWeb) {
       return 'http://localhost:4001'; // Web
     } else if (Platform.isAndroid) {
-      return 'http://10.0.2.2:4001'; // Android emulator
+      // IP thật của máy tính bạn
+      return 'http://192.168.5.188:4001'; // Android device
     } else if (Platform.isIOS) {
       return 'http://localhost:4001'; // iOS simulator
     } else {

@@ -6,7 +6,7 @@ import '../network/course_service.dart';
 import '../network/learnmap_service.dart';
 import '../theme/app_themes.dart';
 import '../widgets/snake_path_layout.dart'; // Import new component
-import 'lesson_detail_page.dart';
+import 'lesson_detail_page_refactored.dart';
 
 class LearnmapPage extends StatefulWidget {
   const LearnmapPage({super.key});
@@ -252,14 +252,10 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
 
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => LessonDetailPage(
+        builder: (context) => LessonDetailPageRefactored(
           lessonId: lessonId,
           unitId: unitId,
-          lessonTitle: 'Lesson ${lessonId.substring(0, 8)}...',
-          currentHearts: controller?.gamificationData?.hearts ?? 5,
-          onHeartsChanged: (newHearts) {
-            controller?.updateHearts(newHearts);
-          },
+          courseId: selectedCourseId ?? '',
           onLessonCompleted: (unitId, lessonId, status) {
             controller?.updateLessonProgress(unitId, lessonId, status);
           },

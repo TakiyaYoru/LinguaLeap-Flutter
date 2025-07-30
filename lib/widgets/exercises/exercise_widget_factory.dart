@@ -4,6 +4,7 @@ import 'fill_blank_widget.dart';
 import 'true_false_widget.dart';
 import 'translation_widget.dart';
 import 'word_matching_widget.dart';
+import 'listening_widget.dart';
 
 class ExerciseWidgetFactory {
   static Widget createExerciseWidget({
@@ -48,6 +49,14 @@ class ExerciseWidgetFactory {
       
       case 'word_matching':
         return WordMatchingWidget(
+          content: content,
+          question: question,
+          onAnswerSubmitted: onAnswerSubmitted,
+          controllerState: controllerState,
+        );
+      
+      case 'listening':
+        return ListeningWidget(
           content: content,
           question: question,
           onAnswerSubmitted: onAnswerSubmitted,

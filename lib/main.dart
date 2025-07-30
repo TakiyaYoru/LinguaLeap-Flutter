@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:get/get.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'network/graphql_client.dart';
 import 'network/auth_service.dart';
 import 'routes/app_router.dart';
@@ -10,6 +12,13 @@ import 'theme/theme_manager.dart';
 import 'theme/app_themes.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  
   // Auto-login for testing
   await _autoLogin();
   

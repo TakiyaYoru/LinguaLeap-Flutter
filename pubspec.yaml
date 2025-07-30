@@ -26,6 +26,12 @@ dependencies:
   # Storage
   shared_preferences: ^2.2.3
   
+  # Audio & Firebase
+  audioplayers: ^5.2.1
+  firebase_core: ^2.32.0
+  permission_handler: ^11.1.0
+  universal_io: ^2.2.2  
+  
   # UI
   cupertino_icons: ^1.0.6
 

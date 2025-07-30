@@ -5,11 +5,13 @@ import '../widgets/exercises/exercise_widget_factory.dart';
 import '../widgets/dialogs/correct_answer_dialog.dart';
 import '../widgets/dialogs/wrong_answer_dialog.dart';
 import '../widgets/dialogs/lesson_completion_dialog.dart';
+import '../utils/platform_helper.dart';
 import 'dart:convert';
 
 class LessonDetailPageRefactored extends StatefulWidget {
   final String lessonId;
   final String unitId;
+  final String courseId;
   final String lessonTitle;
   final int currentHearts;
   final Function(int) onHeartsChanged;
@@ -19,11 +21,17 @@ class LessonDetailPageRefactored extends StatefulWidget {
     Key? key,
     required this.lessonId,
     required this.unitId,
-    required this.lessonTitle,
-    required this.currentHearts,
-    required this.onHeartsChanged,
+    required this.courseId,
+    this.lessonTitle = '',
+    this.currentHearts = 5,
+    this.onHeartsChanged = _defaultHeartsChanged,
     required this.onLessonCompleted,
   }) : super(key: key);
+
+  // Default callback for hearts
+  static void _defaultHeartsChanged(int newHearts) {
+    // Default implementation - do nothing
+  }
 
   @override
   State<LessonDetailPageRefactored> createState() => _LessonDetailPageRefactoredState();
@@ -90,6 +98,25 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
       final progress = (currentExerciseIndex + 1) / exercises.length;
       _progressAnimationController.animateTo(progress);
     }
+  }
+
+  String? _buildFullAudioUrl(String? audioUrl) {
+    if (audioUrl == null || audioUrl.isEmpty) {
+      return null;
+    }
+    
+    // If already a full URL (Firebase), return as is
+    if (audioUrl.startsWith('http://') || audioUrl.startsWith('https://')) {
+      return audioUrl;
+    }
+    
+    // If it's a relative path, add backend URL (fallback)
+    if (audioUrl.startsWith('/')) {
+      return '${PlatformHelper.getBackendUrl()}$audioUrl';
+    }
+    
+    // If it's just a filename, assume it's in uploads/audio (fallback)
+    return '${PlatformHelper.getBackendUrl()}/uploads/audio/$audioUrl';
   }
 
   Future<void> _loadExercises() async {
@@ -210,6 +237,20 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
           }
         } catch (e) {
           print('❌ Error parsing translation content: $e');
+        }
+        return false;
+        
+      case 'listening':
+        try {
+          final content = jsonDecode(exercise['content'] as String);
+          final correctAnswer = content['correctAnswer'] as int?;
+          final userAnswerInt = userAnswer as int;
+          
+          if (correctAnswer != null) {
+            return userAnswerInt == correctAnswer;
+          }
+        } catch (e) {
+          print('❌ Error parsing listening content: $e');
         }
         return false;
         
@@ -429,6 +470,18 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
       print('❌ Error parsing content JSON: $e');
       content = {};
     }
+    
+    // Debug logs for listening exercise
+    if (type == 'listening') {
+      print('🔍 [LessonDetailPage] Listening exercise data:');
+      print('  - content: $content');
+      print('  - question: $question');
+      print('  - audio_text: ${content['audio_text']}');
+      print('  - options: ${content['options']}');
+      print('  - correctAnswer: ${content['correctAnswer']}');
+      print('  - audioUrl: ${content['audioUrl']}');
+      print('  - full audioUrl: ${_buildFullAudioUrl(content['audioUrl'])}');
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +530,9 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
               ],
               Expanded(
                 child: Text(
-                  question['text'] as String? ?? 'Câu hỏi',
+                  type == 'listening' 
+                    ? (content['audio_text'] as String? ?? question['text'] as String? ?? 'Audio content')
+                    : (question['text'] as String? ?? 'Câu hỏi'),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
@@ -496,8 +551,18 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
         Expanded(
           child: ExerciseWidgetFactory.createExerciseWidget(
             type: type,
-            content: content,
-            question: question,
+            content: type == 'listening' 
+              ? {
+                  ...content,
+                  'audioUrl': _buildFullAudioUrl(content['audioUrl']),
+                }
+              : content,
+            question: type == 'listening' 
+              ? {
+                  ...question,
+                  'audioUrl': _buildFullAudioUrl(content['audioUrl']),
+                }
+              : question,
             onAnswerSubmitted: _handleAnswerSubmitted,
             controllerState: null, // TODO: Implement state restoration
           ),

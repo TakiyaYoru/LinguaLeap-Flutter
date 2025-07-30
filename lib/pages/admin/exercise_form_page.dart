@@ -305,6 +305,23 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
               _isStatementTrue = content['isTrue'] as bool;
             }
             break;
+          case 'listening':
+            if (content['audio_text'] != null) {
+              _questionTextController.text = content['audio_text'].toString();
+            }
+            if (content['audioUrl'] != null) {
+              _audioUrlController.text = content['audioUrl'].toString();
+            }
+            if (content['options'] != null && content['options'] is List) {
+              final options = content['options'] as List;
+              for (int i = 0; i < options.length && i < _optionControllers.length; i++) {
+                _optionControllers[i].text = options[i].toString();
+              }
+            }
+            if (content['correctAnswer'] != null) {
+              _correctOptionIndex = content['correctAnswer'] as int;
+            }
+            break;
           case 'translation':
             if (content['sourceText'] != null) {
               _sourceTextController.text = content['sourceText'].toString();
@@ -382,6 +399,16 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         return {
           'statement': _statementController.text.trim(),
           'isTrue': _isStatementTrue,
+        };
+      
+      case 'listening':
+        return {
+          'audio_text': _questionTextController.text.trim(),
+          'question': _questionTextController.text.trim(),
+          'options': _optionControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
+          'correctAnswer': _correctOptionIndex,
+          'transcription': _questionTextController.text.trim(),
+          'audioUrl': _audioUrlController.text.trim().isEmpty ? null : _audioUrlController.text.trim(),
         };
       
       case 'word_matching':
@@ -1235,30 +1262,98 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Audio Text Field for TTS
         TextFormField(
-          controller: _audioUrlController,
+          controller: _questionTextController,
           decoration: const InputDecoration(
-            labelText: 'Audio URL *',
+            labelText: 'Audio Text (for TTS) *',
             border: OutlineInputBorder(),
-            hintText: 'https://example.com/audio.mp3',
+            hintText: 'Enter the text that will be converted to audio...',
           ),
+          maxLines: 3,
           validator: (value) {
             if (value == null || value.trim().isEmpty) {
-              return 'Please enter audio URL';
+              return 'Please enter audio text';
             }
             return null;
           },
         ),
         const SizedBox(height: 16),
+        
+        // Generate Audio Button
+        ElevatedButton.icon(
+          onPressed: _isGenerating ? null : _generateAudioFromText,
+          icon: _isGenerating 
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.volume_up),
+          label: Text(_isGenerating ? 'Generating Audio...' : 'Generate Audio from Text'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppThemes.systemBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          ),
+        ),
+        const SizedBox(height: 16),
+        
+        // Audio URL Field (auto-filled after generation)
+        TextFormField(
+          controller: _audioUrlController,
+          decoration: const InputDecoration(
+            labelText: 'Audio URL (auto-generated)',
+            border: OutlineInputBorder(),
+            hintText: 'Will be filled automatically after generating audio',
+          ),
+          readOnly: true,
+        ),
+        const SizedBox(height: 16),
+        
+        // Question Field
         TextFormField(
           controller: _questionTextController,
           decoration: const InputDecoration(
-            labelText: 'Question',
+            labelText: 'Question for Students',
             border: OutlineInputBorder(),
             hintText: 'What did you hear?',
           ),
           maxLines: 3,
         ),
+        const SizedBox(height: 16),
+        
+        // Options Section
+        Text('Answer Options:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
+        const SizedBox(height: 8),
+        ...List.generate(4, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Radio<int>(
+                  value: index,
+                  groupValue: _correctOptionIndex,
+                  onChanged: (value) {
+                    setState(() {
+                      _correctOptionIndex = value!;
+                    });
+                  },
+                ),
+                Expanded(
+                  child: TextFormField(
+                    controller: _optionControllers[index],
+                    decoration: InputDecoration(
+                      labelText: 'Option ${String.fromCharCode(65 + index)}',
+                      border: const OutlineInputBorder(),
+                      hintText: 'Enter option ${String.fromCharCode(65 + index)}',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }
@@ -1533,6 +1628,73 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         color: AppThemes.primaryGreen,
       ),
     );
+  }
+
+  // Audio Generation Methods
+  Future<void> _generateAudioFromText() async {
+    if (_questionTextController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập text để tạo audio trước'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+    });
+
+    try {
+      print('🔊 [ExerciseForm] Generating audio from text...');
+      print('  - Text: ${_questionTextController.text}');
+
+      // Show loading message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('🔊 Đang tạo audio, vui lòng đợi...'),
+            backgroundColor: Colors.blue,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+
+      // Generate audio using TTS
+      final audioResult = await ExerciseService.generateAudio(
+        _questionTextController.text.trim(),
+      );
+
+      // Update audio URL field
+      setState(() {
+        _audioUrlController.text = audioResult.audioUrl;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✅ Tạo audio thành công!'),
+            backgroundColor: AppThemes.systemGreen,
+          ),
+        );
+      }
+
+    } catch (e) {
+      print('❌ [ExerciseForm] Error generating audio: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Lỗi tạo audio: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isGenerating = false;
+      });
+    }
   }
 
   // AI Generation Methods

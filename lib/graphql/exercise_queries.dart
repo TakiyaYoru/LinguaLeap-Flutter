@@ -21,6 +21,18 @@ class ExerciseQueries {
       }
     }
   ''';
+
+  // Generate audio from text
+  static const String generateAudio = '''
+    mutation GenerateAudio(\$input: AudioGenerationInput!) {
+      generateAudio(input: \$input) {
+        exerciseId
+        audioUrl
+        text
+        filePath
+      }
+    }
+  ''';
   // ===============================================
   // ADMIN QUERIES
   // ===============================================

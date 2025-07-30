@@ -9,6 +9,7 @@ import '../pages/auth/login_page.dart';
 import '../pages/auth/register_page.dart';
 import '../pages/home_page.dart';
 import '../pages/exercise/exercise_container_page.dart'; // ← NEW
+import '../pages/lesson_detail_page_refactored.dart'; // ← NEW
 import '../pages/practice/practice_page.dart';
 import '../pages/practice/vocabulary_page.dart';
 import '../pages/profile_page.dart';
@@ -219,6 +220,26 @@ class AppRouter {
           return ExerciseContainerPage(
             lessonId: lessonId,
             exercises: exercises,
+          );
+        },
+      ),
+      
+      // Lesson detail route (no shell) ← NEW
+      GoRoute(
+        path: lessonDetail,
+        builder: (context, state) {
+          final lessonId = state.pathParameters['lessonId']!;
+          final unitId = state.uri.queryParameters['unitId'];
+          final courseId = state.uri.queryParameters['courseId'];
+          
+          return LessonDetailPageRefactored(
+            lessonId: lessonId,
+            unitId: unitId ?? '',
+            courseId: courseId ?? '',
+            onLessonCompleted: (unitId, lessonId, status) {
+              // Handle lesson completion
+              print('🎉 Lesson completed: $lessonId');
+            },
           );
         },
       ),

@@ -12,6 +12,54 @@ class ExerciseService {
   // AI GENERATION OPERATIONS
   // ===============================================
 
+  // Generate audio from text
+  static Future<AudioGenerationResult> generateAudio(String text) async {
+    try {
+      print('🔊 [ExerciseService] Generating audio from text...');
+      print('  - Text: $text');
+      
+      final result = await _client.mutate(MutationOptions(
+        document: gql(ExerciseQueries.generateAudio),
+        variables: {
+          'input': {
+            'text': text,
+            'language': 'en-US',
+            'voiceName': 'en-US-Standard-A',
+            'speakingRate': 1.0,
+            'pitch': 0.0,
+          },
+        },
+        fetchPolicy: FetchPolicy.networkOnly,
+        errorPolicy: ErrorPolicy.all,
+      )).timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          throw Exception('Audio generation timeout after 60 seconds');
+        },
+      );
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error generating audio: ${result.exception}');
+        throw Exception('Failed to generate audio: ${result.exception}');
+      }
+
+      final audioData = result.data?['generateAudio'];
+      print('🔊 [ExerciseService] Audio generation result: $audioData');
+      
+      if (audioData == null) {
+        throw Exception('No audio data returned');
+      }
+
+      final audioResult = AudioGenerationResult.fromJson(audioData);
+      print('✅ [ExerciseService] Generated audio: ${audioResult.audioUrl}');
+      return audioResult;
+      
+    } catch (e) {
+      print('❌ [ExerciseService] Exception generating audio: $e');
+      throw Exception('Failed to generate audio: $e');
+    }
+  }
+
   // Generate exercise with AI
   static Future<GeneratedExercise> generateExercise(String type, dynamic context) async {
     const int maxRetries = 3;

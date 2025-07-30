@@ -389,4 +389,40 @@ Map<String, dynamic> _parseContent(dynamic content) {
   }
   
   return {};
+}
+
+// ===============================================
+// AUDIO GENERATION RESULT MODEL
+// ===============================================
+
+class AudioGenerationResult {
+  final String? exerciseId;
+  final String audioUrl;
+  final String text;
+  final String filePath;
+
+  AudioGenerationResult({
+    this.exerciseId,
+    required this.audioUrl,
+    required this.text,
+    required this.filePath,
+  });
+
+  factory AudioGenerationResult.fromJson(Map<String, dynamic> json) {
+    return AudioGenerationResult(
+      exerciseId: json['exerciseId'],
+      audioUrl: json['audioUrl'] ?? '',
+      text: json['text'] ?? '',
+      filePath: json['filePath'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'exerciseId': exerciseId,
+      'audioUrl': audioUrl,
+      'text': text,
+      'filePath': filePath,
+    };
+  }
 } 
