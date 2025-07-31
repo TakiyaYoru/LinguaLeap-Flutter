@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../network/auth_service.dart';
 import '../models/user_model.dart';
 import '../theme/app_themes.dart';
+import '../widgets/dialogs/heart_purchase_dialog.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -26,6 +27,12 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final userdata = await AuthService.getCurrentUser();
       if (userdata != null) {
+        print('📊 [ProfilePage] User data loaded:');
+        print('  - Level: ${userdata['level']}');
+        print('  - Total XP: ${userdata['totalXP']}');
+        print('  - Diamonds: ${userdata['diamonds']}');
+        print('  - Hearts: ${userdata['hearts']}');
+        
         setState(() {
           user = UserModel.fromJson(userdata);
           isLoading = false;
@@ -36,6 +43,7 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (e) {
+      print('❌ [ProfilePage] Error loading user data: $e');
       setState(() {
         isLoading = false;
       });
@@ -141,10 +149,22 @@ class _ProfilePageState extends State<ProfilePage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildStatItem('Level', user!.currentLevel, AppThemes.systemBlue),
+                    _buildStatItem('Level', '${user!.level}', AppThemes.systemBlue),
                     _buildStatItem('XP', '${user!.totalXP}', AppThemes.xp),
-                    _buildStatItem('Hearts', '${user!.hearts}/5', AppThemes.hearts),
+                    _buildStatItem('Diamonds', '${user!.diamonds}', AppThemes.systemIndigo),
+                    GestureDetector(
+                      onTap: () => _showHeartPurchaseDialog(),
+                      child: _buildStatItem('Hearts', '${user!.hearts}/5', AppThemes.hearts),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
                     _buildStatItem('Streak', '${user!.currentStreak}', AppThemes.streak),
+                    if (user!.isPremium)
+                      _buildStatItem('Premium', '👑', AppThemes.premium),
                   ],
                 ),
               ],
@@ -294,6 +314,20 @@ class _ProfilePageState extends State<ProfilePage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showHeartPurchaseDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => HeartPurchaseDialog(
+        currentDiamonds: user?.diamonds ?? 0,
+        currentHearts: user?.hearts ?? 5,
+        onHeartsPurchased: () {
+          // Refresh user data after purchasing hearts
+          _loadUserInfo();
+        },
       ),
     );
   }

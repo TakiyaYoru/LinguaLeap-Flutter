@@ -12,7 +12,9 @@ class AuthQueries {
           displayName
           avatar
           currentLevel
+          level
           totalXP
+          diamonds
           hearts
           currentStreak
           longestStreak
@@ -41,7 +43,9 @@ class AuthQueries {
           displayName
           avatar
           currentLevel
+          level
           totalXP
+          diamonds
           hearts
           currentStreak
           longestStreak
@@ -69,7 +73,9 @@ class AuthQueries {
         displayName
         avatar
         currentLevel
+        level
         totalXP
+        diamonds
         hearts
         currentStreak
         longestStreak

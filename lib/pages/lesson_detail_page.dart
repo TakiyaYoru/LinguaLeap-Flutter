@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../network/learnmap_service.dart';
+import '../network/gamification_service.dart';
 import '../theme/app_themes.dart';
+import '../widgets/dialogs/lesson_completion_dialog.dart';
 import 'dart:convert'; // Added for jsonDecode
 
 class LessonDetailPage extends StatefulWidget {
@@ -1353,7 +1356,7 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     }
   }
 
-  void _completeLesson() {
+  void _completeLesson() async {
     setState(() {
       isLessonCompleted = true;
     });
@@ -1364,6 +1367,51 @@ class _LessonDetailPageState extends State<LessonDetailPage>
     // Gọi callback để cập nhật progress
     widget.onLessonCompleted(widget.unitId, widget.lessonId, 'completed');
 
+    // Call gamification service to complete lesson
+    try {
+      final result = await GamificationService.completeLesson(widget.lessonId);
+      
+      if (result != null && result['success'] == true) {
+        // Show completion dialog with real data
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => LessonCompletionDialog(
+            onContinue: () {
+              Navigator.of(context).pop(); // Close dialog
+              // Use context.go to navigate back to learnmap page instead of pop
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop(); // Go back to learnmap page
+              } else {
+                // If we can't pop, navigate to courses page (learnmap)
+                context.go('/courses');
+              }
+            },
+            xpEarned: result['xpEarned'] ?? 5,
+            diamondsEarned: result['diamondsEarned'] ?? 10,
+            levelUpBonus: result['levelUpBonus'] ?? 0,
+            newLevel: result['newLevel'] ?? 1,
+            newTotalXP: result['newTotalXP'] ?? 0,
+            newDiamonds: result['newDiamonds'] ?? 0,
+          ),
+        );
+        
+        print('✅ [LessonDetailPage] Gamification data: +${result['xpEarned']} XP, +${result['diamondsEarned']} diamonds');
+        if (result['levelUpBonus'] > 0) {
+          print('🎉 [LessonDetailPage] Level up bonus: +${result['levelUpBonus']} diamonds');
+        }
+      } else {
+        // Fallback to simple dialog if gamification fails
+        _showSimpleCompletionDialog();
+      }
+    } catch (e) {
+      print('❌ [LessonDetailPage] Error completing lesson with gamification: $e');
+      // Fallback to simple dialog
+      _showSimpleCompletionDialog();
+    }
+  }
+
+  void _showSimpleCompletionDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1381,7 +1429,6 @@ class _LessonDetailPageState extends State<LessonDetailPage>
               ),
             ),
             const SizedBox(height: 16),
-            // Character illustration
             Container(
               width: 80,
               height: 80,
@@ -1401,53 +1448,34 @@ class _LessonDetailPageState extends State<LessonDetailPage>
             ),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Diamonds section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppThemes.systemBlue, AppThemes.systemIndigo],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
+        content: const Text(
+          'Congratulations! You have completed this lesson.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                Navigator.of(context).pop(); // Go back to previous page
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppThemes.primaryGreen,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.diamond, color: Colors.white, size: 24),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Diamonds',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    '12',
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
+              child: const Text(
+                'CONTINUE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
-            const SizedBox(height: 16),
-            
-            // Stats row
-            Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppThemes.xp, AppThemes.systemOrange],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+          ),
+        ],
+      ),
+    );
+  }
                     child: Column(
                       children: [
                         const Text(

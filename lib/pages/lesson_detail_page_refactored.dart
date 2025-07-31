@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../network/learnmap_service.dart';
+import '../network/gamification_service.dart';
+import '../network/auth_service.dart';
+import '../models/user_model.dart';
 import '../theme/app_themes.dart';
 import '../widgets/exercises/exercise_widget_factory.dart';
 import '../widgets/dialogs/correct_answer_dialog.dart';
 import '../widgets/dialogs/wrong_answer_dialog.dart';
 import '../widgets/dialogs/lesson_completion_dialog.dart';
+import '../widgets/dialogs/heart_purchase_dialog.dart';
 import '../utils/platform_helper.dart';
+import '../pages/home_page.dart';
 import 'dart:convert';
 
 class LessonDetailPageRefactored extends StatefulWidget {
@@ -46,6 +52,7 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
   String? error;
   bool isLessonCompleted = false;
   Set<String> completedExercises = {};
+  UserModel? user;
 
   // Animation controllers for enhanced UI
   late AnimationController _progressAnimationController;
@@ -83,6 +90,7 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
       curve: Curves.easeOut,
     ));
     
+    _loadUserData();
     _loadExercises();
   }
 
@@ -91,6 +99,21 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
     _progressAnimationController.dispose();
     _feedbackController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userData = await AuthService.getCurrentUser();
+      if (userData != null) {
+        setState(() {
+          user = UserModel.fromJson(userData);
+          hearts = user?.hearts ?? 5;
+        });
+        widget.onHeartsChanged(hearts);
+      }
+    } catch (e) {
+      print('❌ [LessonDetailPage] Error loading user data: $e');
+    }
   }
 
   void _updateProgress() {
@@ -344,11 +367,40 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
     );
   }
 
-  void _showWrongAnswerDialog() {
+  void _showWrongAnswerDialog() async {
     final exercise = exercises[currentExerciseIndex];
     final feedback = exercise['feedback'] as Map<String, dynamic>?;
     final incorrectMessage = feedback?['incorrect'] ?? 'Chưa đúng, hãy thử lại!';
     final hintMessage = feedback?['hint'] ?? '';
+    
+    // Use heart through gamification service
+    try {
+      final result = await GamificationService.useHeart();
+      
+      if (result != null) {
+        // Update hearts count from gamification response
+        final newHearts = result['hearts'] ?? hearts - 1;
+        setState(() {
+          hearts = newHearts;
+        });
+        widget.onHeartsChanged(hearts);
+        
+        print('💔 [LessonDetailPage] Heart used. New hearts: $hearts');
+        
+        // Check if user is premium (unlimited hearts)
+        final isPremium = result['isPremium'] ?? false;
+        if (isPremium) {
+          print('👑 [LessonDetailPage] Premium user - unlimited hearts');
+        }
+      }
+    } catch (e) {
+      print('❌ [LessonDetailPage] Error using heart: $e');
+      // Fallback: decrease hearts locally
+      setState(() {
+        hearts = hearts > 0 ? hearts - 1 : 0;
+      });
+      widget.onHeartsChanged(hearts);
+    }
     
     showDialog(
       context: context,
@@ -370,45 +422,31 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        backgroundColor: AppThemes.lightBackground,
-        title: Row(
-          children: [
-            Icon(Icons.favorite_border, color: AppThemes.hearts, size: 32),
-            const SizedBox(width: 12),
-            Text('No Hearts Left!', style: TextStyle(color: AppThemes.lightLabel)),
-          ],
-        ),
-        content: Text(
-          'You\'ve run out of hearts. Purchase more hearts or wait for them to refill.',
-          style: TextStyle(color: AppThemes.lightSecondaryLabel),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _buyHearts();
-            },
-            child: Text('GET HEARTS', style: TextStyle(color: AppThemes.primaryGreen)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppThemes.primaryGreen),
-            child: const Text('CLOSE', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+      builder: (context) => HeartPurchaseDialog(
+        currentDiamonds: user?.diamonds ?? 0,
+        currentHearts: hearts,
+        onHeartsPurchased: () {
+          // Refresh user data after purchasing hearts
+          _refreshUserData();
+        },
       ),
     );
   }
 
-  void _buyHearts() {
-    setState(() {
-      hearts = 5; // Temporary reset to 5
-    });
-    widget.onHeartsChanged(hearts);
+  Future<void> _refreshUserData() async {
+    try {
+      final userData = await AuthService.getCurrentUser();
+      if (userData != null) {
+        setState(() {
+          user = UserModel.fromJson(userData);
+          hearts = user?.hearts ?? 5;
+        });
+        widget.onHeartsChanged(hearts);
+        print('🔄 [LessonDetailPage] User data refreshed. Hearts: $hearts');
+      }
+    } catch (e) {
+      print('❌ [LessonDetailPage] Error refreshing user data: $e');
+    }
   }
 
   void _nextExercise() {
@@ -429,7 +467,7 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
     }
   }
 
-  void _completeLesson() {
+  void _completeLesson() async {
     setState(() {
       isLessonCompleted = true;
     });
@@ -439,13 +477,128 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
 
     widget.onLessonCompleted(widget.unitId, widget.lessonId, 'completed');
 
+    // Call gamification service to complete lesson
+    try {
+      final result = await GamificationService.completeLesson(widget.lessonId);
+      
+      if (result != null && result['success'] == true) {
+        // Update homepage data
+        final xpEarned = result['xpEarned'] ?? 5;
+        final diamondsEarned = result['diamondsEarned'] ?? 10;
+        
+        // Call static method to update homepage
+        HomePageState.onLessonCompleted(
+          xpEarned: xpEarned,
+          diamondsEarned: diamondsEarned,
+        );
+        
+        // Show completion dialog with real data
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => LessonCompletionDialog(
+            onContinue: () {
+              Navigator.of(context).pop(); // Close dialog
+              // Use context.go to navigate back to learnmap page instead of pop
+              if (Navigator.of(context).canPop()) {
+                Navigator.of(context).pop(); // Go back to learnmap page
+              } else {
+                // If we can't pop, navigate to courses page (learnmap)
+                context.go('/courses');
+              }
+            },
+            xpEarned: xpEarned,
+            diamondsEarned: result['diamondsEarned'] ?? 10,
+            levelUpBonus: result['levelUpBonus'] ?? 0,
+            newLevel: result['newLevel'] ?? 1,
+            newTotalXP: result['newTotalXP'] ?? 0,
+            newDiamonds: result['newDiamonds'] ?? 0,
+          ),
+        );
+        
+        print('✅ [LessonDetailPage] Gamification data: +${result['xpEarned']} XP, +${result['diamondsEarned']} diamonds');
+        if (result['levelUpBonus'] > 0) {
+          print('🎉 [LessonDetailPage] Level up bonus: +${result['levelUpBonus']} diamonds');
+        }
+      } else {
+        // Fallback to simple dialog if gamification fails
+        _showSimpleCompletionDialog();
+      }
+    } catch (e) {
+      print('❌ [LessonDetailPage] Error completing lesson with gamification: $e');
+      // Fallback to simple dialog
+      _showSimpleCompletionDialog();
+    }
+  }
+
+  void _showSimpleCompletionDialog() {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => LessonCompletionDialog(
-        onContinue: () {
-          Navigator.of(context).pop();
-        },
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: AppThemes.lightBackground,
+        title: Column(
+          children: [
+            Text(
+              'Lesson completed!',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppThemes.primaryGreen,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.celebration,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Congratulations! You have completed this lesson.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 16),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                // Use context.go to navigate back to learnmap page instead of pop
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop(); // Go back to learnmap page
+                } else {
+                                  // If we can't pop, navigate to courses page (learnmap)
+                context.go('/courses');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppThemes.primaryGreen,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text(
+                'CONTINUE',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

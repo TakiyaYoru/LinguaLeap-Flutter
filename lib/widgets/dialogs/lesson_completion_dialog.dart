@@ -3,10 +3,26 @@ import '../../theme/app_themes.dart';
 
 class LessonCompletionDialog extends StatelessWidget {
   final VoidCallback onContinue;
+  final int xpEarned;
+  final int diamondsEarned;
+  final int levelUpBonus;
+  final int newLevel;
+  final int newTotalXP;
+  final int newDiamonds;
+  final String? timeSpent;
+  final double? accuracy;
 
   const LessonCompletionDialog({
     Key? key,
     required this.onContinue,
+    required this.xpEarned,
+    required this.diamondsEarned,
+    required this.levelUpBonus,
+    required this.newLevel,
+    required this.newTotalXP,
+    required this.newDiamonds,
+    this.timeSpent,
+    this.accuracy,
   }) : super(key: key);
 
   @override
@@ -48,6 +64,36 @@ class LessonCompletionDialog extends StatelessWidget {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // XP Earned section
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppThemes.xp, AppThemes.systemOrange],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.flash_on, color: Colors.white, size: 24),
+                const SizedBox(width: 8),
+                const Text(
+                  'XP Earned',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                Text(
+                  '+$xpEarned',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          
           // Diamonds section
           Container(
             width: double.infinity,
@@ -65,17 +111,50 @@ class LessonCompletionDialog extends StatelessWidget {
                 const Icon(Icons.diamond, color: Colors.white, size: 24),
                 const SizedBox(width: 8),
                 const Text(
-                  'Diamonds',
+                  'Diamonds Earned',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
-                const Text(
-                  '12',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                Text(
+                  '+$diamondsEarned',
+                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
           ),
+          
+          // Level up bonus (if any)
+          if (levelUpBonus > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Colors.amber, Colors.orange],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.star, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Level Up Bonus!',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '+$levelUpBonus',
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          
           const SizedBox(height: 16),
           
           // Stats row
@@ -104,9 +183,9 @@ class LessonCompletionDialog extends StatelessWidget {
                         children: [
                           const Icon(Icons.flash_on, color: Colors.white, size: 16),
                           const SizedBox(width: 4),
-                          const Text(
-                            '24',
-                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          Text(
+                            '$newTotalXP',
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -120,7 +199,7 @@ class LessonCompletionDialog extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppThemes.primaryGreen, AppThemes.primaryGreenLight],
+                      colors: [AppThemes.systemBlue, AppThemes.systemIndigo],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -129,18 +208,18 @@ class LessonCompletionDialog extends StatelessWidget {
                   child: Column(
                     children: [
                       const Text(
-                        'Time',
+                        'Level',
                         style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.timer, color: Colors.white, size: 16),
+                          const Icon(Icons.trending_up, color: Colors.white, size: 16),
                           const SizedBox(width: 4),
-                          const Text(
-                            '1:45',
-                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          Text(
+                            'Lv$newLevel',
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),
@@ -154,7 +233,7 @@ class LessonCompletionDialog extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppThemes.hearts, AppThemes.systemRed],
+                      colors: [AppThemes.systemBlue, AppThemes.systemIndigo],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -163,18 +242,18 @@ class LessonCompletionDialog extends StatelessWidget {
                   child: Column(
                     children: [
                       const Text(
-                        'Accuracy',
+                        'Diamonds',
                         style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 4),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.track_changes, color: Colors.white, size: 16),
+                          const Icon(Icons.diamond, color: Colors.white, size: 16),
                           const SizedBox(width: 4),
-                          const Text(
-                            '87%',
-                            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                          Text(
+                            '$newDiamonds',
+                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                         ],
                       ),

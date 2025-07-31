@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import '../../network/exercise_progress_service.dart';
+import '../../widgets/dialogs/heart_purchase_dialog.dart';
 
 class ExerciseContainerPage extends StatefulWidget {
   final String lessonId;
@@ -1602,6 +1603,11 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
       }
     });
     
+    // Check if hearts are depleted
+    if (hearts <= 0) {
+      _showHeartPurchaseDialog();
+    }
+    
     _feedbackController.forward();
   }
 
@@ -1637,6 +1643,23 @@ class _ExerciseContainerPageState extends State<ExerciseContainerPage>
     final minutes = duration.inMinutes;
     final seconds = duration.inSeconds % 60;
     return '${minutes}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void _showHeartPurchaseDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => HeartPurchaseDialog(
+        currentDiamonds: 0, // TODO: Get from user data
+        currentHearts: hearts,
+        onHeartsPurchased: () {
+          // Reset hearts to 5 after purchase
+          setState(() {
+            hearts = 5;
+          });
+        },
+      ),
+    );
   }
 
   int _calculateAccuracy() {

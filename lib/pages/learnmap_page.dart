@@ -4,6 +4,8 @@ import 'dart:math' as math;
 import '../controllers/learnmap_controller.dart';
 import '../network/course_service.dart';
 import '../network/learnmap_service.dart';
+import '../network/auth_service.dart';
+import '../models/user_model.dart';
 import '../theme/app_themes.dart';
 import '../widgets/snake_path_layout.dart'; // Import new component
 import 'lesson_detail_page_refactored.dart';
@@ -21,6 +23,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   bool isLoadingCourses = true;
   String? error;
   LearnmapController? controller;
+  UserModel? user;
   late AnimationController _unlockAnimationController;
   late AnimationController _startBubbleAnimationController;
   late Animation<double> _startBubbleAnimation;
@@ -86,6 +89,7 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
     // Scroll listener to show/hide back button
     _scrollController.addListener(_onScroll);
     
+    _loadUserData();
     _loadCourses();
   }
 
@@ -109,6 +113,19 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
   void didChangeDependencies() {
     super.didChangeDependencies();
     // Removed auto refresh on navigation
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userData = await AuthService.getCurrentUser();
+      if (userData != null) {
+        setState(() {
+          user = UserModel.fromJson(userData);
+        });
+      }
+    } catch (e) {
+      print('❌ [LearnmapPage] Error loading user data: $e');
+    }
   }
 
   void _onScroll() {
@@ -156,6 +173,9 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
 
   Future<void> _refreshData() async {
     print('🔄 [LearnmapPage] Refreshing all data...');
+    
+    // Refresh user data
+    await _loadUserData();
     
     // Refresh courses
     await _loadCourses();
@@ -307,10 +327,68 @@ class _LearnmapPageState extends State<LearnmapPage> with TickerProviderStateMix
       appBar: AppBar(
         backgroundColor: AppThemes.lightSecondaryBackground,
         title: const Text(
-          'Học tiếng Anh',
+          'LearnMap',
           style: TextStyle(color: AppThemes.lightLabel),
         ),
         actions: [
+          // Hearts indicator
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.shade200),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.favorite,
+                  color: Colors.red.shade600,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${user?.hearts ?? 5}',
+                  style: TextStyle(
+                    color: Colors.red.shade600,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Diamonds indicator
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade200),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.diamond,
+                  color: Colors.blue.shade600,
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  '${user?.diamonds ?? 0}',
+                  style: TextStyle(
+                    color: Colors.blue.shade600,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
           // Refresh button
           IconButton(
             icon: Icon(Icons.refresh, color: AppThemes.primaryGreen),
