@@ -7,7 +7,38 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 import '../graphql/gamification_queries.dart';
 import 'graphql_client.dart';
 
+// Import PracticeRewardResult model
+class PracticeRewardResult {
+  final bool success;
+  final String message;
+  final int xpAwarded;
+  final int diamondsAwarded;
+  final int newTotalXP;
+  final int newDiamonds;
+
+  PracticeRewardResult({
+    required this.success,
+    required this.message,
+    required this.xpAwarded,
+    required this.diamondsAwarded,
+    required this.newTotalXP,
+    required this.newDiamonds,
+  });
+
+  factory PracticeRewardResult.fromJson(Map<String, dynamic> json) {
+    return PracticeRewardResult(
+      success: json['success'] ?? false,
+      message: json['message'] ?? '',
+      xpAwarded: json['xpAwarded'] ?? 0,
+      diamondsAwarded: json['diamondsAwarded'] ?? 0,
+      newTotalXP: json['newTotalXP'] ?? 0,
+      newDiamonds: json['newDiamonds'] ?? 0,
+    );
+  }
+}
+
 class GamificationService {
+  static GraphQLClient get _client => GraphQLService.client;
 
   // Get user gamification stats
   static Future<Map<String, dynamic>?> getGamificationStats() async {
@@ -207,6 +238,114 @@ class GamificationService {
     } catch (e) {
       print('❌ Error getting user achievements: $e');
       return null;
+    }
+  }
+
+  // Award practice rewards
+  static Future<PracticeRewardResult> awardPracticeRewards({
+    int xp = 5,
+    int diamonds = 5,
+  }) async {
+    try {
+      print('🏆 [GamificationService] Awarding practice rewards...');
+      print('  - XP: $xp');
+      print('  - Diamonds: $diamonds');
+      
+      final result = await _client.mutate(
+        MutationOptions(
+          document: gql(GamificationQueries.awardPracticeRewards),
+          variables: {
+            'xp': xp,
+            'diamonds': diamonds,
+          },
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [GamificationService] Error awarding practice rewards: ${result.exception}');
+        throw Exception('Failed to award practice rewards: ${result.exception}');
+      }
+
+      final rewardData = result.data?['awardPracticeRewards'];
+      print('✅ [GamificationService] Practice rewards awarded successfully');
+      
+      return PracticeRewardResult.fromJson(rewardData);
+    } catch (e) {
+      print('❌ [GamificationService] Exception awarding practice rewards: $e');
+      throw Exception('Failed to award practice rewards: $e');
+    }
+  }
+
+  // Award reading completion rewards
+  static Future<PracticeRewardResult> awardReadingRewards({
+    int xp = 10,
+    int diamonds = 10,
+  }) async {
+    try {
+      print('🏆 [GamificationService] Awarding reading completion rewards...');
+      print('  - XP: $xp');
+      print('  - Diamonds: $diamonds');
+      
+      final result = await _client.mutate(
+        MutationOptions(
+          document: gql(GamificationQueries.awardPracticeRewards), // Reuse same mutation
+          variables: {
+            'xp': xp,
+            'diamonds': diamonds,
+          },
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [GamificationService] Error awarding reading rewards: ${result.exception}');
+        throw Exception('Failed to award reading rewards: ${result.exception}');
+      }
+
+      final rewardData = result.data?['awardPracticeRewards'];
+      print('✅ [GamificationService] Reading rewards awarded successfully');
+      
+      return PracticeRewardResult.fromJson(rewardData);
+    } catch (e) {
+      print('❌ [GamificationService] Exception awarding reading rewards: $e');
+      throw Exception('Failed to award reading rewards: $e');
+    }
+  }
+
+  // Award speaking completion rewards
+  static Future<PracticeRewardResult> awardSpeakingRewards({
+    int xp = 15,
+    int diamonds = 15,
+  }) async {
+    try {
+      print('🏆 [GamificationService] Awarding speaking completion rewards...');
+      print('  - XP: $xp');
+      print('  - Diamonds: $diamonds');
+      
+      final result = await _client.mutate(
+        MutationOptions(
+          document: gql(GamificationQueries.awardPracticeRewards), // Reuse same mutation
+          variables: {
+            'xp': xp,
+            'diamonds': diamonds,
+          },
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [GamificationService] Error awarding speaking rewards: ${result.exception}');
+        throw Exception('Failed to award speaking rewards: ${result.exception}');
+      }
+
+      final rewardData = result.data?['awardPracticeRewards'];
+      print('✅ [GamificationService] Speaking rewards awarded successfully');
+      
+      return PracticeRewardResult.fromJson(rewardData);
+    } catch (e) {
+      print('❌ [GamificationService] Exception awarding speaking rewards: $e');
+      throw Exception('Failed to award speaking rewards: $e');
     }
   }
 } 

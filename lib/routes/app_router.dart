@@ -12,6 +12,13 @@ import '../pages/exercise/exercise_container_page.dart'; // ← NEW
 import '../pages/lesson_detail_page_refactored.dart'; // ← NEW
 import '../pages/practice/practice_page.dart';
 import '../pages/practice/vocabulary_page.dart';
+import '../pages/practice/listening_practice_page.dart';
+import '../pages/practice/listening_exercise_detail_page.dart';
+import '../pages/practice/reading_practice_page.dart';
+import '../pages/practice/reading_exercise_detail_page.dart';
+import '../pages/practice/speaking_practice_page.dart';
+import '../pages/practice/speaking_exercise_detail_page.dart';
+import '../pages/practice/speaking_test_page.dart';
 import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
 import '../network/auth_service.dart';
@@ -35,6 +42,13 @@ class AppRouter {
   static const String courses = '/courses';
   static const String practice = '/practice';
   static const String vocabulary = '/vocabulary';
+  static const String listeningPractice = '/listening-practice';
+  static const String listeningExerciseDetail = '/listening-exercise/:exerciseId';
+  static const String readingPractice = '/reading-practice';
+  static const String readingExerciseDetail = '/reading-exercise/:exerciseId';
+  static const String speakingPractice = '/speaking-practice';
+  static const String speakingExerciseDetail = '/speaking-exercise/:exerciseId';
+  static const String speakingTest = '/speaking-test';
   static const String profile = '/profile';
   static const String settings = '/settings';
   static const String courseDetail = '/course/:courseId';
@@ -248,6 +262,51 @@ class AppRouter {
       GoRoute(
         path: vocabulary,
         builder: (context, state) => const VocabularyPage(),
+      ),
+      
+      // Listening practice route (no shell)
+      GoRoute(
+        path: listeningPractice,
+        builder: (context, state) => const ListeningPracticePage(),
+      ),
+      
+      // Listening exercise detail route (no shell)
+      GoRoute(
+        path: listeningExerciseDetail,
+        builder: (context, state) {
+          final exerciseId = state.pathParameters['exerciseId']!;
+          return ListeningExerciseDetailPage(exerciseId: exerciseId);
+        },
+      ),
+      
+      // Reading exercise detail route (no shell)
+      GoRoute(
+        path: readingExerciseDetail,
+        builder: (context, state) {
+          final exerciseId = state.pathParameters['exerciseId']!;
+          return ReadingExerciseDetailPage(exerciseId: exerciseId);
+        },
+      ),
+      
+      // Speaking practice route (no shell)
+      GoRoute(
+        path: speakingPractice,
+        builder: (context, state) => const SpeakingPracticePage(),
+      ),
+      
+      // Speaking exercise detail route (no shell)
+      GoRoute(
+        path: speakingExerciseDetail,
+        builder: (context, state) {
+          final exerciseId = state.pathParameters['exerciseId']!;
+          return SpeakingExerciseDetailPage(exerciseId: exerciseId);
+        },
+      ),
+      
+      // Speaking test route (no shell)
+      GoRoute(
+        path: speakingTest,
+        builder: (context, state) => const SpeakingTestPage(),
       ),
       
       // Settings route (no shell)

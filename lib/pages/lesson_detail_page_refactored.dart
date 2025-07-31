@@ -180,6 +180,10 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
 
     final exercise = exercises[currentExerciseIndex];
     final exerciseId = exercise['_id'];
+    
+    print('🔄 [LessonDetailPage] Received userAnswer: $userAnswer');
+    print('🔄 [LessonDetailPage] Exercise type: ${exercise['type']}');
+    
     final isCorrect = _checkAnswer(exercise, userAnswer);
     
     print('🔄 [LessonDetailPage] Handling answer for exercise: $exerciseId, correct: $isCorrect');
@@ -297,6 +301,26 @@ class _LessonDetailPageRefactoredState extends State<LessonDetailPageRefactored>
           }
         } catch (e) {
           print('❌ Error parsing word_matching content: $e');
+        }
+        return false;
+        
+      case 'speaking':
+        try {
+          // For speaking exercises, the userAnswer should be a Map with 'isCorrect' field
+          if (userAnswer is Map<String, dynamic>) {
+            final isCorrect = userAnswer['isCorrect'] as bool?;
+            final accuracyScore = userAnswer['accuracyScore'] as double?;
+            
+            print('🎤 [LessonDetailPage] Speaking exercise result:');
+            print('  - isCorrect: $isCorrect');
+            print('  - accuracyScore: $accuracyScore');
+            print('  - recognizedText: ${userAnswer['recognizedText']}');
+            
+            // Consider correct if isCorrect is true or accuracy score is high enough
+            return isCorrect == true || (accuracyScore != null && accuracyScore >= 0.7);
+          }
+        } catch (e) {
+          print('❌ Error parsing speaking content: $e');
         }
         return false;
         

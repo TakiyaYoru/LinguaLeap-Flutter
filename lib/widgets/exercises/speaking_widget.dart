@@ -31,7 +31,7 @@ class SpeakingWidget extends StatefulWidget {
 
 class _SpeakingWidgetState extends State<SpeakingWidget> {
   final AudioService _audioService = AudioService();
-  final AudioRecorder _audioRecorder = AudioRecorder();
+  final Record _audioRecorder = Record();
   
   // Content data
   String? sentence;
@@ -56,6 +56,7 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
   // UI state
   bool _isAudioReady = false;
   bool _isInitializing = true;
+  bool _recorderInitialized = false;
   String? _error;
   
   @override
@@ -64,7 +65,12 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
     _initializeExercise();
     _initializeAudio();
     _requestPermissions();
-    _initializeRecorder();
+    // Temporarily disable recorder initialization to prevent crashes
+    // Future.delayed(const Duration(milliseconds: 500), () {
+    //   if (mounted) {
+    //     _initializeRecorder();
+    //   }
+    // });
   }
 
   @override
@@ -160,7 +166,12 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
           _isAudioReady = false;
           _isInitializing = false;
         });
-        print('⚠️ [SpeakingWidget] No audio URL provided');
+        // Only log warning if audio is expected but not provided
+        if (audioText != null && audioText!.isNotEmpty) {
+          print('⚠️ [SpeakingWidget] Audio text provided but no audio URL');
+        } else {
+          print('ℹ️ [SpeakingWidget] No audio URL needed for this exercise');
+        }
       }
       
     } catch (e) {
@@ -197,17 +208,37 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
 
   Future<void> _initializeRecorder() async {
     try {
-      if (kIsWeb) {
-        // On web, we need to ensure the recorder is properly initialized
-        print('🎤 [SpeakingWidget] Initializing recorder for web...');
-        // The recorder should be ready after this
-      } else {
-        // On mobile, check if recorder is available
-        final isAvailable = await _audioRecorder.hasPermission();
-        print('🎤 [SpeakingWidget] Recorder available: $isAvailable');
+      print('🎤 [SpeakingWidget] Initializing recorder...');
+      
+      // Check if recorder is available first
+      bool isAvailable = false;
+      try {
+        isAvailable = await _audioRecorder.hasPermission();
+        print('🎤 [SpeakingWidget] Recorder permission check: $isAvailable');
+      } catch (e) {
+        print('⚠️ [SpeakingWidget] Permission check failed: $e');
+        isAvailable = false;
       }
+      
+      if (!isAvailable) {
+        print('⚠️ [SpeakingWidget] Recorder not available, will request permission when needed');
+        setState(() {
+          _error = 'Cần quyền microphone để ghi âm';
+        });
+        return;
+      }
+      
+      print('✅ [SpeakingWidget] Recorder initialized successfully');
+      setState(() {
+        _recorderInitialized = true;
+        _error = null;
+      });
     } catch (e) {
       print('❌ [SpeakingWidget] Error initializing recorder: $e');
+      setState(() {
+        _error = 'Không thể khởi tạo recorder: $e';
+        _recorderInitialized = false;
+      });
     }
   }
 
@@ -236,44 +267,61 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
 
   Future<void> _startRecording() async {
     try {
-      if (await _audioRecorder.hasPermission()) {
+      print('🎤 [SpeakingWidget] Starting recording...');
+      
+      // Check if recorder is initialized
+      if (!_recorderInitialized) {
         setState(() {
-          _isRecording = true;
-          _recordingDuration = Duration.zero;
-          _error = null;
+          _error = 'Recorder chưa được khởi tạo. Vui lòng thử lại.';
         });
+        return;
+      }
+      
+      // Check if recorder is available
+      bool hasPermission = false;
+      try {
+        hasPermission = await _audioRecorder.hasPermission();
+        print('🎤 [SpeakingWidget] Has permission: $hasPermission');
+      } catch (e) {
+        print('❌ [SpeakingWidget] Permission check failed: $e');
+        hasPermission = false;
+      }
+      
+      if (!hasPermission) {
+        setState(() {
+          _error = 'Không có quyền ghi âm. Vui lòng cấp quyền microphone.';
+        });
+        return;
+      }
 
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        
+      setState(() {
+        _isRecording = true;
+        _recordingDuration = Duration.zero;
+        _error = null;
+      });
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      String path;
+      
+      try {
         if (kIsWeb) {
           // Web: Use simple path for record plugin
-          await _audioRecorder.start(
-            const RecordConfig(
-              encoder: AudioEncoder.aacLc,
-              bitRate: 128000,
-              sampleRate: 44100,
-            ),
-            path: 'recording_$timestamp.m4a',
-          );
+          path = 'recording_$timestamp.m4a';
+          print('🎤 [SpeakingWidget] Web recording path: $path');
         } else {
           // Mobile: Use file system path
-          await _audioRecorder.start(
-            const RecordConfig(
-              encoder: AudioEncoder.aacLc,
-              bitRate: 128000,
-              sampleRate: 44100,
-            ),
-            path: '/tmp/recording_$timestamp.m4a',
-          );
+          path = '/tmp/recording_$timestamp.m4a';
+          print('🎤 [SpeakingWidget] Mobile recording path: $path');
         }
 
+        await _audioRecorder.start(path: path);
         _updateRecordingDuration();
-        print('🎤 [SpeakingWidget] Recording started');
-      } else {
-        setState(() {
-          _error = 'Không có quyền ghi âm';
-        });
+        print('✅ [SpeakingWidget] Recording started successfully');
+      } catch (e) {
+        print('❌ [SpeakingWidget] Error in recorder.start(): $e');
+        throw Exception('Không thể khởi động recorder: $e');
       }
+      
     } catch (e) {
       print('❌ [SpeakingWidget] Error starting recording: $e');
       setState(() {
@@ -285,15 +333,23 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
 
   Future<void> _stopRecording() async {
     try {
-      final path = await _audioRecorder.stop();
+      print('🎤 [SpeakingWidget] Stopping recording...');
+      
+      String? path;
+      try {
+        path = await _audioRecorder.stop();
+        print('🎤 [SpeakingWidget] Recording stopped: $path');
+      } catch (e) {
+        print('❌ [SpeakingWidget] Error stopping recorder: $e');
+        // Create a dummy path for fallback
+        path = '/tmp/fallback_recording.m4a';
+      }
       
       setState(() {
         _isRecording = false;
         _hasRecorded = true;
         _recordedAudioPath = path;
       });
-
-      print('🎤 [SpeakingWidget] Recording stopped: $path');
       
       // Process the recording
       await _processRecording();
@@ -329,6 +385,8 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
     });
 
     try {
+      print('🎤 [SpeakingWidget] Processing recording...');
+      
       // Use SpeechRecognitionService
       final speechService = SpeechRecognitionService();
       final result = await speechService.recognizeSpeech(_recordedAudioPath!, sentence ?? '');
@@ -341,6 +399,11 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
         _isProcessing = false;
       });
 
+      print('✅ [SpeakingWidget] Speech recognition completed');
+      print('  - Recognized text: $_recognizedText');
+      print('  - Accuracy score: $_accuracyScore');
+      print('  - Is correct: $_isCorrect');
+
       // Submit result
       widget.onAnswerSubmitted({
         'recognizedText': _recognizedText,
@@ -348,14 +411,31 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
         'isCorrect': _isCorrect,
         'feedback': _feedback,
         'audioPath': _recordedAudioPath,
-        'confidence': result.confidence,
+        'confidence': _accuracyScore, // Use accuracy score as confidence
       });
 
     } catch (e) {
       print('❌ [SpeakingWidget] Error processing recording: $e');
+      
+      // Fallback: Create a basic result even if speech recognition fails
       setState(() {
-        _error = 'Không thể xử lý ghi âm: $e';
+        _recognizedText = 'Không thể nhận diện giọng nói';
+        _accuracyScore = 0.0;
+        _isCorrect = false;
+        _feedback = 'Có lỗi xảy ra khi xử lý ghi âm. Vui lòng thử lại.';
         _isProcessing = false;
+        _error = 'Không thể xử lý ghi âm: $e';
+      });
+      
+      // Still submit a result for the exercise flow
+      widget.onAnswerSubmitted({
+        'recognizedText': _recognizedText,
+        'accuracyScore': _accuracyScore,
+        'isCorrect': _isCorrect,
+        'feedback': _feedback,
+        'audioPath': _recordedAudioPath,
+        'confidence': _accuracyScore,
+        'error': _error,
       });
     }
   }
@@ -528,7 +608,7 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
           child: Column(
             children: [
               
-              // Recording Status
+              // Recorder Status
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -536,21 +616,77 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
                     width: 12,
                     height: 12,
                     decoration: BoxDecoration(
-                      color: _isRecording ? Colors.red : Colors.grey,
+                      color: _recorderInitialized ? Colors.green : Colors.orange,
                       shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _isRecording ? 'Đang ghi âm...' : 'Sẵn sàng ghi âm',
+                    _recorderInitialized ? 'Recorder sẵn sàng' : 'Recorder chưa khởi tạo',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: _isRecording ? AppThemes.speaking : AppThemes.lightLabel,
+                      color: _recorderInitialized ? Colors.green : Colors.orange,
                     ),
                   ),
                 ],
               ),
+              
+              const SizedBox(height: 12),
+              
+              // Initialize Recorder Button
+              if (!_recorderInitialized) ...[
+                ElevatedButton(
+                  onPressed: () async {
+                    try {
+                      print('🎤 [SpeakingWidget] Manually initializing recorder...');
+                      await _initializeRecorder();
+                      setState(() {
+                        _recorderInitialized = true;
+                        _error = null;
+                      });
+                    } catch (e) {
+                      print('❌ [SpeakingWidget] Manual initialization failed: $e');
+                      setState(() {
+                        _error = 'Không thể khởi tạo recorder: $e';
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
+                  child: const Text('Khởi tạo Recorder'),
+                ),
+                const SizedBox(height: 12),
+              ],
+              
+              // Recording Status
+              if (_recorderInitialized) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _isRecording ? Colors.red : Colors.grey,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _isRecording ? 'Đang ghi âm...' : 'Sẵn sàng ghi âm',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _isRecording ? AppThemes.speaking : AppThemes.lightLabel,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               
               const SizedBox(height: 16),
               
@@ -568,35 +704,37 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
               ],
               
               // Recording Controls
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Record/Stop Button
-                  GestureDetector(
-                    onTap: _isProcessing ? null : (_isRecording ? _stopRecording : _startRecording),
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: _isRecording ? Colors.red : AppThemes.speaking,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: (_isRecording ? Colors.red : AppThemes.speaking).withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        _isRecording ? Icons.stop : Icons.mic,
-                        color: Colors.white,
-                        size: 32,
+              if (_recorderInitialized) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Record/Stop Button
+                    GestureDetector(
+                      onTap: _isProcessing ? null : (_isRecording ? _stopRecording : _startRecording),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: _isRecording ? Colors.red : AppThemes.speaking,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_isRecording ? Colors.red : AppThemes.speaking).withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _isRecording ? Icons.stop : Icons.mic,
+                          color: Colors.white,
+                          size: 32,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
@@ -635,6 +773,34 @@ class _SpeakingWidgetState extends State<SpeakingWidget> {
             ),
           ),
           const SizedBox(height: 24),
+        ],
+        
+        // Error Display
+        if (_error != null) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _error!,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.red[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
         
         // Results Section

@@ -47,6 +47,10 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // Leaderboard data
   List<Map<String, dynamic>> leaderboardData = [];
+  
+  // Daily diamond claim state
+  bool _dailyDiamondsClaimed = false;
+  String? _lastClaimDate;
 
   @override
   void initState() {
@@ -54,6 +58,7 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _instance = this;
     _initializeAnimations();
     _loadUserInfo();
+    _checkDailyClaimReset();
     
     // Listen for lesson completion events
     _setupLessonCompletionListener();
@@ -102,6 +107,83 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
     // This will be called when lesson is completed
     // For now, we'll use a simple approach with static method
     // In a real app, you might use a state management solution like Provider or Riverpod
+  }
+
+  Future<void> _claimDailyDiamonds() async {
+    try {
+      // Check if already claimed
+      if (_dailyDiamondsClaimed) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Daily diamond reward already claimed!'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+              // Update user diamonds
+        if (user != null) {
+          setState(() {
+            user = user!.copyWith(
+              diamonds: user!.diamonds + 5,
+            );
+            _dailyDiamondsClaimed = true;
+            _lastClaimDate = DateTime.now().toIso8601String().split('T')[0]; // Store date only
+          });
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.diamond, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                const Text(
+                  'Daily diamond reward claimed! +5 diamonds',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            backgroundColor: AppThemes.systemIndigo,
+            duration: const Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+
+        // Trigger pulse animation
+        _pulseController.forward();
+
+        print('✅ [HomePage] Daily diamonds claimed: +5 diamonds');
+        print('   Total diamonds: ${user!.diamonds}');
+      }
+    } catch (e) {
+      print('❌ [HomePage] Error claiming daily diamonds: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error claiming reward: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _checkDailyClaimReset() {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    
+    // Reset claim state if it's a new day
+    if (_lastClaimDate != today) {
+      setState(() {
+        _dailyDiamondsClaimed = false;
+        _lastClaimDate = today;
+      });
+      print('🔄 [HomePage] Daily claim reset for new day: $today');
+    } else {
+      print('📅 [HomePage] Daily claim already used today: $_lastClaimDate');
+    }
   }
 
   // Static method to update homepage when lesson is completed
@@ -560,6 +642,9 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildDailyGoalsSection() {
+    final completedGoals = _getCompletedGoals();
+    final allGoalsCompleted = completedGoals == dailyGoals.length;
+    
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -576,13 +661,47 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   color: AppThemes.lightLabel,
                 ),
               ),
-              Text(
-                '${_getCompletedGoals()}/${dailyGoals.length}',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: AppThemes.primaryGreen,
-                ),
+              Row(
+                children: [
+                  Text(
+                    '$completedGoals/${dailyGoals.length}',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppThemes.primaryGreen,
+                    ),
+                  ),
+                  if (allGoalsCompleted) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppThemes.systemIndigo.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppThemes.systemIndigo.withOpacity(0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.diamond,
+                            color: AppThemes.systemIndigo,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '+5',
+                            style: TextStyle(
+                              color: AppThemes.systemIndigo,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
@@ -675,6 +794,67 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
               );
             },
           ),
+          
+          // Claim Diamond Button when all goals completed and not claimed yet
+          if (allGoalsCompleted && !_dailyDiamondsClaimed) ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _claimDailyDiamonds,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemes.systemIndigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                ),
+                icon: const Icon(Icons.diamond, size: 24),
+                label: const Text(
+                  'Claim Daily Diamond Reward!',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+          
+          // Already claimed message
+          if (allGoalsCompleted && _dailyDiamondsClaimed) ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppThemes.primaryGreen.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppThemes.primaryGreen.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: AppThemes.primaryGreen,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Daily diamond reward claimed! Come back tomorrow for more rewards.',
+                      style: TextStyle(
+                        color: AppThemes.primaryGreen,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -741,6 +921,18 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          // Test button for demo purposes
+          Container(
+            width: double.infinity,
+            child: _buildQuickActionCard(
+              '🎯 Test Complete Goals',
+              'Simulate completing all daily goals',
+              Icons.auto_fix_high,
+              AppThemes.systemPurple,
+              _simulateCompleteAllGoals,
+            ),
           ),
         ],
       ),
@@ -1168,5 +1360,16 @@ class HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
     
     return userRank >= 0 ? userRank + 1 : leaderboardData.length + 1;
+  }
+
+  // Test method to simulate completing all goals (for demo purposes)
+  void _simulateCompleteAllGoals() {
+    setState(() {
+      dailyGoals[0]['current'] = 3; // Complete 3 lessons
+      dailyGoals[1]['current'] = 50; // Earn 50 XP
+      dailyGoals[2]['current'] = 15; // Practice 15 minutes
+      dailyGoals[3]['current'] = 1; // Maintain streak
+    });
+    print('🎯 [HomePage] All daily goals completed for testing');
   }
 }

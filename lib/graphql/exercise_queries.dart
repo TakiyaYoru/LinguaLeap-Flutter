@@ -300,6 +300,189 @@ class ExerciseQueries {
   // USER QUERIES
   // ===============================================
 
+  // Get random exercises for practice
+  static const String getRandomExercises = '''
+    query GetRandomExercises(\$limit: Int!) {
+      randomExercises(limit: \$limit) {
+        id
+        title
+        instruction
+        type_display_name
+        type
+        skill_focus
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        xpReward
+        timeLimit
+        estimatedTime
+        requires_audio
+        requires_microphone
+        isPremium
+        sortOrder
+        feedback {
+          correct
+          incorrect
+          hint
+        }
+      }
+    }
+  ''';
+
+  // Get listening exercises
+  static const String getListeningExercises = '''
+    query GetListeningExercises {
+      listeningExercises {
+        id
+        title
+        instruction
+        type
+        type_display_name
+        skill_focus
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        xpReward
+        timeLimit
+        estimatedTime
+        requires_audio
+        requires_microphone
+        isPremium
+        sortOrder
+        createdAt
+        updatedAt
+        createdBy {
+          id
+          username
+          displayName
+        }
+      }
+    }
+  ''';
+
+  // Get reading exercises
+  static const String getReadingExercises = '''
+    query GetReadingExercises {
+      readingExercises {
+        id
+        title
+        instruction
+        type
+        type_display_name
+        skill_focus
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        xpReward
+        timeLimit
+        estimatedTime
+        requires_audio
+        requires_microphone
+        isPremium
+        sortOrder
+        createdAt
+        updatedAt
+        createdBy {
+          id
+          username
+          displayName
+        }
+      }
+    }
+  ''';
+
+  // Get speaking exercises
+  static const String getSpeakingExercises = '''
+    query GetSpeakingExercises {
+      speakingExercises {
+        id
+        title
+        instruction
+        type
+        type_display_name
+        skill_focus
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        xpReward
+        timeLimit
+        estimatedTime
+        requires_audio
+        requires_microphone
+        isPremium
+        sortOrder
+        createdAt
+        updatedAt
+        createdBy {
+          id
+          username
+          displayName
+        }
+      }
+    }
+  ''';
+
+  // Get exercise by ID
+  static const String getExerciseById = '''
+    query GetExerciseById(\$id: ID!) {
+      exercise(id: \$id) {
+        id
+        title
+        instruction
+        type
+        type_display_name
+        skill_focus
+        question {
+          text
+          audioUrl
+          imageUrl
+          videoUrl
+        }
+        content
+        maxScore
+        difficulty
+        xpReward
+        timeLimit
+        estimatedTime
+        requires_audio
+        requires_microphone
+        isPremium
+        sortOrder
+        createdAt
+        updatedAt
+        createdBy {
+          id
+          username
+          displayName
+        }
+      }
+    }
+  ''';
+
   // Get exercises for lesson (user view)
   static const String getLessonExercises = '''
     query GetLessonExercises(\$lessonId: ID!) {

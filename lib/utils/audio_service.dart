@@ -25,6 +25,7 @@ class AudioService {
   Function(AudioState)? _onStateChanged;
   Function(Duration)? _onPositionChanged;
   Function(Duration)? _onDurationChanged;
+  bool _isReinitializing = false;
 
   // Getters
   AudioState get currentState => _currentState;
@@ -231,7 +232,13 @@ class AudioService {
 
   // Force reinitialize audio service
   Future<void> forceReinitialize() async {
+    if (_isReinitializing) {
+      print('⚠️ Audio service is already reinitializing, skipping...');
+      return;
+    }
+    
     try {
+      _isReinitializing = true;
       print('🔄 Force reinitializing audio service...');
       
       // Reset state
@@ -240,7 +247,9 @@ class AudioService {
       
       // Safely dispose current player
       try {
-        await _audioPlayer.dispose();
+        if (_audioPlayer.state != PlayerState.disposed) {
+          await _audioPlayer.dispose();
+        }
       } catch (e) {
         print('⚠️ Error disposing old player (ignoring): $e');
       }
@@ -269,13 +278,18 @@ class AudioService {
     } catch (e) {
       print('❌ Error force reinitializing audio service: $e');
       _updateState(AudioState.error);
+    } finally {
+      _isReinitializing = false;
     }
   }
 
   // Dispose resources
   Future<void> dispose() async {
     try {
-      await _audioPlayer.dispose();
+      // Check if player is already disposed
+      if (_audioPlayer.state != PlayerState.disposed) {
+        await _audioPlayer.dispose();
+      }
       _onStateChanged = null;
       _onPositionChanged = null;
       _onDurationChanged = null;

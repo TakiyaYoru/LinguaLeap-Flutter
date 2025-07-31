@@ -142,4 +142,18 @@ class GamificationQueries {
       }
     }
   ''';
+
+  // Award practice rewards
+  static const String awardPracticeRewards = '''
+    mutation AwardPracticeRewards(\$xp: Int!, \$diamonds: Int!) {
+      awardPracticeRewards(xp: \$xp, diamonds: \$diamonds) {
+        success
+        message
+        xpAwarded
+        diamondsAwarded
+        newTotalXP
+        newDiamonds
+      }
+    }
+  ''';
 } 

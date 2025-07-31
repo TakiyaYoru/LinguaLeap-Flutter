@@ -376,6 +376,148 @@ class ExerciseService {
   }
 
   // ===============================================
+  // RANDOM PRACTICE OPERATIONS
+  // ===============================================
+
+  // Get random exercises for practice
+  static Future<List<ExerciseModel>> getRandomExercises({int limit = 10}) async {
+    try {
+      print('🎯 [ExerciseService] Getting random exercises...');
+      print('  - Limit: $limit');
+      
+      final result = await _client.query(QueryOptions(
+        document: gql(ExerciseQueries.getRandomExercises),
+        variables: {'limit': limit},
+        fetchPolicy: FetchPolicy.networkOnly,
+      ));
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error getting random exercises: ${result.exception}');
+        throw Exception('Failed to get random exercises: ${result.exception}');
+      }
+
+      final exercises = result.data?['randomExercises'] as List<dynamic>? ?? [];
+      final exerciseModels = exercises.map((json) => ExerciseModel.fromJson(json)).toList();
+      
+      print('✅ [ExerciseService] Got ${exerciseModels.length} random exercises');
+      return exerciseModels;
+    } catch (e) {
+      print('❌ [ExerciseService] Exception getting random exercises: $e');
+      throw Exception('Failed to get random exercises: $e');
+    }
+  }
+
+  // Get listening exercises
+  static Future<List<ExerciseModel>> getListeningExercises() async {
+    try {
+      print('🎧 [ExerciseService] Getting listening exercises...');
+      
+      final result = await _client.query(
+        QueryOptions(
+          document: gql(ExerciseQueries.getListeningExercises),
+          fetchPolicy: FetchPolicy.cacheAndNetwork,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error getting listening exercises: ${result.exception}');
+        throw Exception('Failed to get listening exercises: ${result.exception}');
+      }
+
+      final exercises = result.data?['listeningExercises'] as List<dynamic>? ?? [];
+      print('✅ [ExerciseService] Found ${exercises.length} listening exercises');
+
+      return exercises.map((exercise) => ExerciseModel.fromJson(exercise)).toList();
+    } catch (e) {
+      print('❌ [ExerciseService] Error in getListeningExercises: $e');
+      rethrow;
+    }
+  }
+
+  // Get reading exercises
+  static Future<List<ExerciseModel>> getReadingExercises() async {
+    try {
+      print('📖 [ExerciseService] Getting reading exercises...');
+      
+      final result = await _client.query(
+        QueryOptions(
+          document: gql(ExerciseQueries.getReadingExercises),
+          fetchPolicy: FetchPolicy.cacheAndNetwork,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error getting reading exercises: ${result.exception}');
+        throw Exception('Failed to get reading exercises: ${result.exception}');
+      }
+
+      final exercises = result.data?['readingExercises'] as List<dynamic>? ?? [];
+      print('✅ [ExerciseService] Found ${exercises.length} reading exercises');
+
+      return exercises.map((exercise) => ExerciseModel.fromJson(exercise)).toList();
+    } catch (e) {
+      print('❌ [ExerciseService] Error in getReadingExercises: $e');
+      rethrow;
+    }
+  }
+
+  // Get speaking exercises
+  static Future<List<ExerciseModel>> getSpeakingExercises() async {
+    try {
+      print('🎤 [ExerciseService] Getting speaking exercises...');
+      
+      final result = await _client.query(
+        QueryOptions(
+          document: gql(ExerciseQueries.getSpeakingExercises),
+          fetchPolicy: FetchPolicy.cacheAndNetwork,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error getting speaking exercises: ${result.exception}');
+        throw Exception('Failed to get speaking exercises: ${result.exception}');
+      }
+
+      final exercises = result.data?['speakingExercises'] as List<dynamic>? ?? [];
+      print('✅ [ExerciseService] Found ${exercises.length} speaking exercises');
+
+      return exercises.map((exercise) => ExerciseModel.fromJson(exercise)).toList();
+    } catch (e) {
+      print('❌ [ExerciseService] Error in getSpeakingExercises: $e');
+      rethrow;
+    }
+  }
+
+  // Get exercise by ID
+  static Future<ExerciseModel?> getExerciseById(String exerciseId) async {
+    try {
+      print('🎮 [ExerciseService] Getting exercise by ID: $exerciseId');
+      
+      final result = await _client.query(
+        QueryOptions(
+          document: gql(ExerciseQueries.getExerciseById),
+          variables: {'id': exerciseId},
+          fetchPolicy: FetchPolicy.networkOnly,
+        ),
+      );
+
+      if (result.hasException) {
+        print('❌ [ExerciseService] Error getting exercise by ID: ${result.exception}');
+        return null;
+      }
+
+      final exerciseData = result.data?['exercise'];
+      if (exerciseData != null) {
+        return ExerciseModel.fromJson(exerciseData);
+      }
+      return null;
+    } catch (e) {
+      print('❌ [ExerciseService] Error getting exercise by ID: $e');
+      return null;
+    }
+  }
+
+  // ===============================================
   // USER OPERATIONS
   // ===============================================
 
