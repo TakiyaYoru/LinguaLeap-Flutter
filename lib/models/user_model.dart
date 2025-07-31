@@ -6,6 +6,7 @@ class UserModel {
   final String email;
   final String displayName;
   final String? avatar;
+  final String? bio;
   final String currentLevel;
   final int level;
   final int totalXP;
@@ -28,6 +29,7 @@ class UserModel {
     required this.email,
     required this.displayName,
     this.avatar,
+    this.bio,
     required this.currentLevel,
     required this.level,
     required this.totalXP,
@@ -52,6 +54,7 @@ class UserModel {
       email: json['email'] ?? '',
       displayName: json['displayName'] ?? '',
       avatar: json['avatar'],
+      bio: json['bio'],
       currentLevel: json['currentLevel'] ?? 'A1',
       level: json['level'] ?? 1,
       totalXP: json['totalXP'] ?? 0,
@@ -77,6 +80,7 @@ class UserModel {
       'email': email,
       'displayName': displayName,
       'avatar': avatar,
+      'bio': bio,
       'currentLevel': currentLevel,
       'level': level,
       'totalXP': totalXP,
@@ -101,6 +105,7 @@ class UserModel {
     String? email,
     String? displayName,
     String? avatar,
+    String? bio,
     String? currentLevel,
     int? level,
     int? totalXP,
@@ -123,6 +128,7 @@ class UserModel {
       email: email ?? this.email,
       displayName: displayName ?? this.displayName,
       avatar: avatar ?? this.avatar,
+      bio: bio ?? this.bio,
       currentLevel: currentLevel ?? this.currentLevel,
       level: level ?? this.level,
       totalXP: totalXP ?? this.totalXP,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../network/auth_service.dart';
+import '../../network/google_auth_service.dart';
 import '../../theme/app_themes.dart';
 
 class LoginPage extends StatefulWidget {
@@ -98,23 +99,65 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           setState(() {
             _message = 'Error: No token received';
           });
-          HapticFeedback.heavyImpact();
         }
       } else {
         setState(() {
-          _message = 'Login failed. Please check your credentials.';
+          _message = 'Invalid email or password';
         });
-        HapticFeedback.heavyImpact();
       }
     } catch (e) {
       setState(() {
-        _message = 'Network error. Please try again.';
+        _message = 'Login failed: ${e.toString()}';
       });
-      HapticFeedback.heavyImpact();
     } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    // Haptic feedback
+    HapticFeedback.lightImpact();
+    
+    setState(() {
+      _isLoading = true;
+      _message = '';
+    });
+
+    try {
+      final result = await GoogleAuthService.signInWithGoogle();
+      
+      if (result != null && result['success'] == true) {
+        setState(() {
+          _message = 'Google Sign-In successful! ✅';
+        });
+        
+        // Success haptic feedback
+        HapticFeedback.lightImpact();
+        
+        // Delay to show success message
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) {
+          context.go('/home');
+        }
+      } else {
+        setState(() {
+          _message = result?['message'] ?? 'Google Sign-In failed';
+        });
+      }
+    } catch (e) {
       setState(() {
-        _isLoading = false;
+        _message = 'Google Sign-In error: ${e.toString()}';
       });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -277,6 +320,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           
           // Login Button
           _buildLoginButton(),
+          
+          const SizedBox(height: 16),
+          
+          // Divider
+          _buildDivider(),
+          
+          const SizedBox(height: 16),
+          
+          // Google Sign-In Button
+          _buildGoogleSignInButton(),
         ],
       ),
     );
@@ -543,6 +596,80 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                 fontFamily: '-apple-system',
               ),
             ),
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Theme.of(context).brightness == Brightness.dark 
+              ? AppThemes.darkTertiaryBackground 
+              : AppThemes.lightSecondaryBackground,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            'or',
+            style: TextStyle(
+              fontSize: 14,
+              color: Theme.of(context).brightness == Brightness.dark 
+                ? AppThemes.darkSecondaryLabel 
+                : AppThemes.lightSecondaryLabel,
+              fontFamily: '-apple-system',
+            ),
+          ),
+        ),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: Theme.of(context).brightness == Brightness.dark 
+              ? AppThemes.darkTertiaryBackground 
+              : AppThemes.lightSecondaryBackground,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGoogleSignInButton() {
+    return SizedBox(
+      height: 52,
+      child: OutlinedButton.icon(
+        onPressed: _isLoading ? null : _handleGoogleSignIn,
+        icon: const Icon(
+          Icons.g_mobiledata,
+          size: 24,
+          color: Colors.red,
+        ),
+        label: const Text(
+          'Continue with Google',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontFamily: '-apple-system',
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? AppThemes.darkLabel 
+            : AppThemes.lightLabel,
+          side: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark 
+              ? AppThemes.darkTertiaryBackground 
+              : AppThemes.lightSecondaryBackground,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          disabledForegroundColor: Theme.of(context).brightness == Brightness.dark 
+            ? AppThemes.darkSecondaryLabel 
+            : AppThemes.lightSecondaryLabel,
+        ),
       ),
     );
   }

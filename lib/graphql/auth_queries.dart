@@ -90,4 +90,71 @@ class AuthQueries {
       }
     }
   ''';
+
+  // Update profile mutation
+  static const String updateProfile = '''
+    mutation UpdateProfile(\$input: UpdateProfileInput!) {
+      updateProfile(input: \$input) {
+        success
+        message
+        user {
+          id
+          username
+          email
+          displayName
+          avatar
+          bio
+          currentLevel
+          level
+          totalXP
+          diamonds
+          hearts
+          currentStreak
+          longestStreak
+          subscriptionType
+          isPremium
+          dailyGoal
+          isEmailVerified
+          isActive
+          role
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  ''';
+
+  // Google authentication mutation
+  static const String googleAuth = '''
+    mutation GoogleAuth(\$input: GoogleAuthInput!) {
+      googleAuth(input: \$input) {
+        success
+        message
+        token
+        user {
+          id
+          username
+          email
+          displayName
+          avatar
+          bio
+          currentLevel
+          level
+          totalXP
+          diamonds
+          hearts
+          currentStreak
+          longestStreak
+          subscriptionType
+          isPremium
+          dailyGoal
+          isEmailVerified
+          isActive
+          role
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  ''';
 }

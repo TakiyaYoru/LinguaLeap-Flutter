@@ -557,23 +557,70 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppThemes.lightGroupedBackground,
       appBar: AppBar(
-        title: Text(_isEditMode ? 'Edit Exercise' : 'Create Exercise'),
+        title: Text(
+          _isEditMode ? 'Edit Exercise' : 'Create Exercise',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         backgroundColor: AppThemes.primaryGreen,
         foregroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            // Show confirmation dialog if there are unsaved changes
+            if (_hasUnsavedChanges()) {
+              _showDiscardChangesDialog();
+            } else {
+              _navigateBack();
+            }
+          },
+        ),
         actions: [
-          if (!_isLoading)
+          if (!_isLoading) ...[
+            TextButton(
+              onPressed: () {
+                // Show confirmation dialog if there are unsaved changes
+                if (_hasUnsavedChanges()) {
+                  _showDiscardChangesDialog();
+                } else {
+                  _navigateBack();
+                }
+              },
+              child: const Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.white, 
+                  fontWeight: FontWeight.w500,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
             TextButton(
               onPressed: _saveExercise,
               child: const Text(
                 'Save',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.white, 
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
+          ],
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: AppThemes.primaryGreen,
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -582,49 +629,55 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Basic Information
-                    _buildSectionTitle('Basic Information'),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Title',
-                        border: OutlineInputBorder(),
+                    _buildSectionCard('Basic Information', [
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a title';
+                          }
+                          return null;
+                        },
                       ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a title';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _instructionController,
-                      decoration: const InputDecoration(
-                        labelText: 'Instruction *',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _instructionController,
+                        decoration: const InputDecoration(
+                          labelText: 'Instruction *',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        maxLines: 3,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter an instruction';
+                          }
+                          return null;
+                        },
                       ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter an instruction';
-                        }
-                        return null;
-                      },
-                    ),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Exercise Type and Settings
-                    _buildSectionTitle('Exercise Settings'),
-                    const SizedBox(height: 16),
-                    
-                    // AI Generation Section
-                    if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') ...[
-                      Card(
-                        child: Padding(
+                    _buildSectionCard('Exercise Settings', [
+                      // AI Generation Section
+                      if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') ...[
+                        Container(
                           padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppThemes.primaryGreen.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppThemes.primaryGreen.withOpacity(0.3),
+                            ),
+                          ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -652,6 +705,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                                         labelText: 'AI Context/Idea',
                                         hintText: _getAIHintText(),
                                         border: const OutlineInputBorder(),
+                                        filled: true,
+                                        fillColor: Colors.white,
                                       ),
                                       maxLines: 3,
                                     ),
@@ -683,340 +738,407 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppThemes.primaryGreen,
                                     foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      DropdownButtonFormField<String>(
+                        value: _selectedType,
+                        decoration: const InputDecoration(
+                          labelText: 'Exercise Type',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        items: _exerciseTypes.map((type) {
+                          return DropdownMenuItem(
+                            value: type,
+                            child: Text(_getTypeDisplayName(type)),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedType = value!;
+                            // Reset skill focus to first available option for new type
+                            final availableSkills = _getSkillFocusOptions();
+                            _selectedSkillFocus = availableSkills.isNotEmpty ? availableSkills.first : '';
+                            // Auto-fill AI suggestion when exercise type changes
+                            if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
+                              _aiContextController.text = _generateAISuggestion();
+                            }
+                          });
+                        },
                       ),
                       const SizedBox(height: 16),
-                    ],
-                    
-                    DropdownButtonFormField<String>(
-                      value: _selectedType,
-                      decoration: const InputDecoration(
-                        labelText: 'Exercise Type',
-                        border: OutlineInputBorder(),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedDifficulty,
+                              decoration: const InputDecoration(
+                                labelText: 'Difficulty',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              items: _difficulties.map((difficulty) {
+                                return DropdownMenuItem(
+                                  value: difficulty,
+                                  child: Text(_getDifficultyDisplay(difficulty)),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedDifficulty = value!;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 1,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSkillFocus,
+                              decoration: const InputDecoration(
+                                labelText: 'Skill Focus',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              items: _getSkillFocusOptions().map((skill) {
+                                return DropdownMenuItem(
+                                  value: skill,
+                                  child: Text(skill.toUpperCase()),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedSkillFocus = value!;
+                                  // Auto-fill AI suggestion when skill focus changes
+                                  if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
+                                    _aiContextController.text = _generateAISuggestion();
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                      items: _exerciseTypes.map((type) {
-                        return DropdownMenuItem(
-                          value: type,
-                          child: Text(_getTypeDisplayName(type)),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedType = value!;
-                          // Reset skill focus to first available option for new type
-                          final availableSkills = _getSkillFocusOptions();
-                          _selectedSkillFocus = availableSkills.isNotEmpty ? availableSkills.first : '';
-                          // Auto-fill AI suggestion when exercise type changes
-                          if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
-                            _aiContextController.text = _generateAISuggestion();
-                          }
-                        });
-                      },
-                    ),
-
-
-                    const SizedBox(height: 16),
-                    
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedDifficulty,
-                            decoration: const InputDecoration(
-                              labelText: 'Difficulty',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: _difficulties.map((difficulty) {
-                              return DropdownMenuItem(
-                                value: difficulty,
-                                child: Text(_getDifficultyDisplay(difficulty)),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedDifficulty = value!;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedSkillFocus,
-                            decoration: const InputDecoration(
-                              labelText: 'Skill Focus',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: _getSkillFocusOptions().map((skill) {
-                              return DropdownMenuItem(
-                                value: skill,
-                                child: Text(skill.toUpperCase()),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _selectedSkillFocus = value!;
-                                // Auto-fill AI suggestion when skill focus changes
-                                if (_selectedType == 'multiple_choice' || _selectedType == 'fill_blank' || _selectedType == 'true_false' || _selectedType == 'translation' || _selectedType == 'word_matching' || _selectedType == 'listening' || _selectedType == 'speaking') {
-                                  _aiContextController.text = _generateAISuggestion();
-                                }
-                              });
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Scoring and Rewards
-                    _buildSectionTitle('Scoring & Rewards'),
-                    const SizedBox(height: 16),
-                    
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: _maxScore.toString(),
-                            decoration: const InputDecoration(
-                              labelText: 'Max Score',
-                              border: OutlineInputBorder(),
+                    _buildSectionCard('Scoring & Rewards', [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: _maxScore.toString(),
+                              decoration: const InputDecoration(
+                                labelText: 'Max Score',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                _maxScore = int.tryParse(value) ?? 100;
+                              },
                             ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              _maxScore = int.tryParse(value) ?? 100;
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: _xpReward.toString(),
-                            decoration: const InputDecoration(
-                              labelText: 'XP Reward',
-                              border: OutlineInputBorder(),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: _xpReward.toString(),
+                              decoration: const InputDecoration(
+                                labelText: 'XP Reward',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                _xpReward = int.tryParse(value) ?? 5;
+                              },
                             ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              _xpReward = int.tryParse(value) ?? 5;
-                            },
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Time Settings
-                    _buildSectionTitle('Time Settings'),
-                    const SizedBox(height: 16),
-                    
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: _timeLimit.toString(),
-                            decoration: const InputDecoration(
-                              labelText: 'Time Limit (seconds)',
-                              border: OutlineInputBorder(),
+                    _buildSectionCard('Time Settings', [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: _timeLimit.toString(),
+                              decoration: const InputDecoration(
+                                labelText: 'Time Limit (seconds)',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                _timeLimit = int.tryParse(value) ?? 0;
+                              },
                             ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              _timeLimit = int.tryParse(value) ?? 0;
-                            },
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: TextFormField(
-                            initialValue: _estimatedTime.toString(),
-                            decoration: const InputDecoration(
-                              labelText: 'Estimated Time (seconds)',
-                              border: OutlineInputBorder(),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: TextFormField(
+                              initialValue: _estimatedTime.toString(),
+                              decoration: const InputDecoration(
+                                labelText: 'Estimated Time (seconds)',
+                                border: OutlineInputBorder(),
+                                filled: true,
+                                fillColor: Colors.white,
+                              ),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                _estimatedTime = int.tryParse(value) ?? 30;
+                              },
                             ),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              _estimatedTime = int.tryParse(value) ?? 30;
-                            },
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Question Content
-                    _buildSectionTitle('Question Content'),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _questionTextController,
-                      decoration: InputDecoration(
-                        labelText: 'Question Text *',
-                        hintText: _getQuestionHintText(),
-                        border: const OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter question text';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Dynamic Audio/Image/Video fields based on skill focus
-                    if (_shouldShowAudioField()) ...[
+                    _buildSectionCard('Question Content', [
                       TextFormField(
-                        controller: _audioUrlController,
+                        controller: _questionTextController,
                         decoration: InputDecoration(
-                          labelText: _getAudioLabelText(),
+                          labelText: 'Question Text *',
+                          hintText: _getQuestionHintText(),
                           border: const OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
                         ),
+                        maxLines: 3,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter question text';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
-                    ],
-                    
-                    if (_shouldShowImageField()) ...[
-                      TextFormField(
-                        controller: _imageUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Image URL (optional)',
-                          border: OutlineInputBorder(),
+                      
+                      // Dynamic Audio/Image/Video fields based on skill focus
+                      if (_shouldShowAudioField()) ...[
+                        TextFormField(
+                          controller: _audioUrlController,
+                          decoration: InputDecoration(
+                            labelText: _getAudioLabelText(),
+                            border: const OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                    
-                    if (_shouldShowVideoField()) ...[
-                      TextFormField(
-                        controller: _videoUrlController,
-                        decoration: const InputDecoration(
-                          labelText: 'Video URL (optional)',
-                          border: OutlineInputBorder(),
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      if (_shouldShowImageField()) ...[
+                        TextFormField(
+                          controller: _imageUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Image URL (optional)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
+                        const SizedBox(height: 16),
+                      ],
+                      
+                      if (_shouldShowVideoField()) ...[
+                        TextFormField(
+                          controller: _videoUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Video URL (optional)',
+                            border: OutlineInputBorder(),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ]),
                     const SizedBox(height: 16),
 
                     // Exercise Specific Content
-                    _buildSectionTitle('Exercise Content'),
-                    const SizedBox(height: 16),
-                    _buildExerciseSpecificForm(),
+                    _buildSectionCard('Exercise Content', [
+                      _buildExerciseSpecificForm(),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Feedback
-                    _buildSectionTitle('Feedback'),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _correctFeedbackController,
-                      decoration: const InputDecoration(
-                        labelText: 'Correct Answer Feedback',
-                        border: OutlineInputBorder(),
+                    _buildSectionCard('Feedback', [
+                      TextFormField(
+                        controller: _correctFeedbackController,
+                        decoration: const InputDecoration(
+                          labelText: 'Correct Answer Feedback',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        maxLines: 2,
                       ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _incorrectFeedbackController,
-                      decoration: const InputDecoration(
-                        labelText: 'Incorrect Answer Feedback',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 16),
+                      
+                      TextFormField(
+                        controller: _incorrectFeedbackController,
+                        decoration: const InputDecoration(
+                          labelText: 'Incorrect Answer Feedback',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        maxLines: 2,
                       ),
-                      maxLines: 2,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      controller: _hintController,
-                      decoration: const InputDecoration(
-                        labelText: 'Hint',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 16),
+                      
+                      TextFormField(
+                        controller: _hintController,
+                        decoration: const InputDecoration(
+                          labelText: 'Hint',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        maxLines: 2,
                       ),
-                      maxLines: 2,
-                    ),
+                    ]),
                     const SizedBox(height: 16),
 
                     // Options
-                    _buildSectionTitle('Options'),
-                    const SizedBox(height: 16),
-                    
-                    TextFormField(
-                      initialValue: _sortOrder.toString(),
-                      decoration: const InputDecoration(
-                        labelText: 'Sort Order',
-                        border: OutlineInputBorder(),
+                    _buildSectionCard('Options', [
+                      TextFormField(
+                        initialValue: _sortOrder.toString(),
+                        decoration: const InputDecoration(
+                          labelText: 'Sort Order',
+                          border: OutlineInputBorder(),
+                          filled: true,
+                          fillColor: Colors.white,
+                        ),
+                        keyboardType: TextInputType.number,
+                        onChanged: (value) {
+                          _sortOrder = int.tryParse(value) ?? 1;
+                        },
                       ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        _sortOrder = int.tryParse(value) ?? 1;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    CheckboxListTile(
-                      title: const Text('Requires Audio'),
-                      value: _requiresAudio,
-                      onChanged: (value) {
-                        setState(() {
-                          _requiresAudio = value ?? false;
-                        });
-                      },
-                    ),
-                    
-                    CheckboxListTile(
-                      title: const Text('Requires Microphone'),
-                      value: _requiresMicrophone,
-                      onChanged: (value) {
-                        setState(() {
-                          _requiresMicrophone = value ?? false;
-                        });
-                      },
-                    ),
-                    
-                    CheckboxListTile(
-                      title: const Text('Premium Content'),
-                      value: _isPremium,
-                      onChanged: (value) {
-                        setState(() {
-                          _isPremium = value ?? false;
-                        });
-                      },
-                    ),
-                    
-                    CheckboxListTile(
-                      title: const Text('Active'),
-                      value: _isActive,
-                      onChanged: (value) {
-                        setState(() {
-                          _isActive = value ?? true;
-                        });
-                      },
-                    ),
+                      const SizedBox(height: 16),
+                      
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          children: [
+                            CheckboxListTile(
+                              title: const Text('Requires Audio'),
+                              value: _requiresAudio,
+                              onChanged: (value) {
+                                setState(() {
+                                  _requiresAudio = value ?? false;
+                                });
+                              },
+                            ),
+                            Divider(height: 1, color: Colors.grey.shade200),
+                            CheckboxListTile(
+                              title: const Text('Requires Microphone'),
+                              value: _requiresMicrophone,
+                              onChanged: (value) {
+                                setState(() {
+                                  _requiresMicrophone = value ?? false;
+                                });
+                              },
+                            ),
+                            Divider(height: 1, color: Colors.grey.shade200),
+                            CheckboxListTile(
+                              title: const Text('Premium Content'),
+                              value: _isPremium,
+                              onChanged: (value) {
+                                setState(() {
+                                  _isPremium = value ?? false;
+                                });
+                              },
+                            ),
+                            Divider(height: 1, color: Colors.grey.shade200),
+                            CheckboxListTile(
+                              title: const Text('Active'),
+                              value: _isActive,
+                              onChanged: (value) {
+                                setState(() {
+                                  _isActive = value ?? true;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ]),
                     
                     const SizedBox(height: 32),
                     
                     // Save Button
-                    SizedBox(
+                    Container(
                       width: double.infinity,
-                      height: 50,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppThemes.primaryGreen.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
                       child: ElevatedButton(
                         onPressed: _isLoading ? null : _saveExercise,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppThemes.primaryGreen,
                           foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
                         ),
                         child: _isLoading
                             ? const CircularProgressIndicator(color: Colors.white)
-                            : Text(_isEditMode ? 'Update Exercise' : 'Create Exercise'),
+                            : Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    _isEditMode ? Icons.save : Icons.add,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _isEditMode ? 'Update Exercise' : 'Create Exercise',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
                   ],
@@ -1058,38 +1180,53 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Options:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
-        const SizedBox(height: 8),
+        Text(
+          'Options:', 
+          style: TextStyle(
+            fontWeight: FontWeight.w600, 
+            color: AppThemes.lightLabel,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 12),
         ...List.generate(4, (index) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Row(
-              children: [
-                Radio<int>(
-                  value: index,
-                  groupValue: _correctOptionIndex,
-                  onChanged: (value) {
-                    setState(() {
-                      _correctOptionIndex = value!;
-                    });
-                  },
-                ),
-                Expanded(
-                  child: TextFormField(
-                    controller: _optionControllers[index],
-                    decoration: InputDecoration(
-                      labelText: 'Option ${String.fromCharCode(65 + index)}',
-                      border: const OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter option ${String.fromCharCode(65 + index)}';
-                      }
-                      return null;
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  Radio<int>(
+                    value: index,
+                    groupValue: _correctOptionIndex,
+                    onChanged: (value) {
+                      setState(() {
+                        _correctOptionIndex = value!;
+                      });
                     },
                   ),
-                ),
-              ],
+                  Expanded(
+                    child: TextFormField(
+                      controller: _optionControllers[index],
+                      decoration: InputDecoration(
+                        labelText: 'Option ${String.fromCharCode(65 + index)}',
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter option ${String.fromCharCode(65 + index)}';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }),
@@ -1106,6 +1243,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           decoration: const InputDecoration(
             labelText: 'Sentence with blank',
             border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
             hintText: 'Complete the sentence: _____ is the capital of Vietnam.',
           ),
           maxLines: 3,
@@ -1122,6 +1261,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           decoration: const InputDecoration(
             labelText: 'Correct Answer',
             border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
             hintText: 'Hanoi',
           ),
           validator: (value) {
@@ -1233,11 +1374,18 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Word Pairs:', style: TextStyle(fontWeight: FontWeight.w600, color: AppThemes.lightLabel)),
-        const SizedBox(height: 8),
+        Text(
+          'Word Pairs:', 
+          style: TextStyle(
+            fontWeight: FontWeight.w600, 
+            color: AppThemes.lightLabel,
+            fontSize: 16,
+          ),
+        ),
+        const SizedBox(height: 12),
         ...List.generate(4, (index) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 16),
             child: Row(
               children: [
                 Expanded(
@@ -1246,18 +1394,33 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
                     decoration: InputDecoration(
                       labelText: 'Word ${index + 1}',
                       border: const OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward, color: AppThemes.primaryGreen),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppThemes.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward, 
+                    color: AppThemes.primaryGreen,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
                     controller: _definitionControllers[index],
                     decoration: InputDecoration(
                       labelText: 'Definition ${index + 1}',
                       border: const OutlineInputBorder(),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
                   ),
                 ),
@@ -1515,14 +1678,23 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
         const SizedBox(height: 16),
         
         // Feedback section
-        _buildSectionTitle('Feedback'),
-        const SizedBox(height: 8),
+        Text(
+          'Feedback',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppThemes.primaryGreen,
+          ),
+        ),
+        const SizedBox(height: 12),
         
         TextFormField(
           controller: _correctFeedbackController,
           decoration: const InputDecoration(
             labelText: 'Feedback đúng',
             border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
             hintText: 'Tuyệt vời! Phát âm chính xác',
           ),
           maxLines: 2,
@@ -1534,6 +1706,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           decoration: const InputDecoration(
             labelText: 'Feedback sai',
             border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
             hintText: 'Hãy thử lại',
           ),
           maxLines: 2,
@@ -1545,6 +1719,8 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
           decoration: const InputDecoration(
             labelText: 'Gợi ý',
             border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
             hintText: 'Nói chậm và rõ ràng',
           ),
           maxLines: 2,
@@ -1779,15 +1955,69 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
     }
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: AppThemes.primaryGreen,
+  Widget _buildSectionCard(String title, List<Widget> children) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppThemes.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getSectionIcon(title),
+                    color: AppThemes.primaryGreen,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppThemes.primaryGreen,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ...children,
+          ],
+        ),
       ),
     );
+  }
+
+  IconData _getSectionIcon(String title) {
+    switch (title.toLowerCase()) {
+      case 'basic information':
+        return Icons.info_outline;
+      case 'exercise settings':
+        return Icons.settings;
+      case 'scoring & rewards':
+        return Icons.star;
+      case 'time settings':
+        return Icons.access_time;
+      case 'question content':
+        return Icons.question_answer;
+      case 'exercise content':
+        return Icons.fitness_center;
+      case 'feedback':
+        return Icons.feedback;
+      case 'options':
+        return Icons.tune;
+      default:
+        return Icons.settings;
+    }
   }
 
   // Audio Generation Methods
@@ -2324,6 +2554,65 @@ class _ExerciseFormPageState extends State<ExerciseFormPage> {
       return 'daily_activities';
     } else {
       return 'general';
+    }
+  }
+
+  // Navigation and unsaved changes handling
+  bool _hasUnsavedChanges() {
+    // Check if any field has been modified
+    return _titleController.text.isNotEmpty ||
+           _instructionController.text.isNotEmpty ||
+           _questionTextController.text.isNotEmpty ||
+           _aiContextController.text.isNotEmpty ||
+           _correctFeedbackController.text != 'Correct! Well done!' ||
+           _incorrectFeedbackController.text != 'Not quite right. Try again!' ||
+           _hintController.text.isNotEmpty ||
+           _audioUrlController.text.isNotEmpty ||
+           _imageUrlController.text.isNotEmpty ||
+           _videoUrlController.text.isNotEmpty ||
+           _audioTextController.text.isNotEmpty ||
+           _transcriptionController.text.isNotEmpty ||
+           _sentenceController.text.isNotEmpty ||
+           _correctAnswerController.text.isNotEmpty ||
+           _sourceTextController.text.isNotEmpty ||
+           _targetTextController.text.isNotEmpty ||
+           _statementController.text.isNotEmpty ||
+           _optionControllers.any((controller) => controller.text.isNotEmpty) ||
+           _listeningOptionControllers.any((controller) => controller.text.isNotEmpty) ||
+           _wordControllers.any((controller) => controller.text.isNotEmpty) ||
+           _definitionControllers.any((controller) => controller.text.isNotEmpty) ||
+           _wordOrderControllers.any((controller) => controller.text.isNotEmpty);
+  }
+
+  void _showDiscardChangesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard Changes?'),
+        content: const Text('You have unsaved changes. Are you sure you want to leave without saving?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _navigateBack();
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateBack() {
+    if (widget.lessonId != null) {
+      context.go('${AppRouter.adminLessonDetail.replaceAll(':lessonId', widget.lessonId!)}');
+    } else {
+      context.go(AppRouter.adminDashboard);
     }
   }
 } 

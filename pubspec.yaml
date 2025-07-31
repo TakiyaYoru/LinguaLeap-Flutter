@@ -30,13 +30,14 @@ dependencies:
   
   # Audio & Firebase
   audioplayers: ^5.2.1
-  firebase_core: ^2.32.0
+  firebase_core: ^3.6.0
   permission_handler: ^11.1.0
   universal_io: ^2.2.2
   record: ^4.4.4
 
   # UI
   cupertino_icons: ^1.0.6
+  google_sign_in: ^6.1.6
 
 dev_dependencies:
   flutter_test:

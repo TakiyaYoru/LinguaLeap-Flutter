@@ -346,6 +346,8 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
     if (lesson == null) return const SizedBox.shrink();
 
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -353,10 +355,17 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
           children: [
             Row(
               children: [
-                Icon(
-                  _getLessonTypeIcon(lesson!.type),
-                  color: AppThemes.primaryGreen,
-                  size: 24,
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppThemes.primaryGreen.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getLessonTypeIcon(lesson!.type),
+                    color: AppThemes.primaryGreen,
+                    size: 24,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -370,10 +379,17 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     color: lesson!.isPublished ? AppThemes.systemGreen : Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (lesson!.isPublished ? AppThemes.systemGreen : Colors.orange).withOpacity(0.3),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
                   child: Text(
                     lesson!.isPublished ? 'Published' : 'Draft',
@@ -397,24 +413,16 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
               ),
             ],
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 _buildInfoChip('Type', lesson!.typeDisplay),
-                const SizedBox(width: 8),
                 _buildInfoChip('Difficulty', lesson!.difficultyDisplay),
-                const SizedBox(width: 8),
                 _buildInfoChip('XP', '${lesson!.xpReward}'),
-                const SizedBox(width: 8),
                 _buildInfoChip('Order', '${lesson!.sortOrder}'),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
                 _buildInfoChip('Duration', '${lesson!.estimatedDuration}m'),
-                const SizedBox(width: 8),
                 _buildInfoChip('Exercises', '${lesson!.totalExercises}'),
-                const SizedBox(width: 8),
                 _buildInfoChip('Premium', lesson!.isPremium ? 'Yes' : 'No'),
               ],
             ),
@@ -437,19 +445,22 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
           fontSize: 12,
           color: AppThemes.lightSecondaryLabel,
         ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
   Widget _buildExercisesSection() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Exercises (${exercises.length})',
@@ -459,28 +470,37 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
                     color: AppThemes.lightLabel,
                   ),
                 ),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    final unitId = lesson?.unitId?.toString() ?? '';
-                    final courseId = lesson?.courseId?.toString() ?? '';
-                    context.go('${AppRouter.adminCreateExercise}?lessonId=${widget.lessonId}&unitId=$unitId&courseId=$courseId');
-                  },
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Exercise'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppThemes.primaryGreen,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(
-                  onPressed: _showEditOrderDialog,
-                  icon: const Icon(Icons.sort, size: 18),
-                  label: const Text('Edit Order'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                  ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          final unitId = lesson?.unitId?.toString() ?? '';
+                          final courseId = lesson?.courseId?.toString() ?? '';
+                          context.go('${AppRouter.adminCreateExercise}?lessonId=${widget.lessonId}&unitId=$unitId&courseId=$courseId');
+                        },
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Exercise'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppThemes.primaryGreen,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _showEditOrderDialog,
+                        icon: const Icon(Icons.sort, size: 18),
+                        label: const Text('Edit Order'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -530,6 +550,8 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
 
   Widget _buildExerciseCard(ExerciseModel exercise) {
     return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
@@ -566,19 +588,13 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
               ),
             ),
             const SizedBox(height: 8),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
               children: [
-                Expanded(
-                  child: _buildExerciseChip('Type', exercise.typeDisplay),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildExerciseChip('Difficulty', exercise.difficultyDisplay),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: _buildExerciseChip('XP', '${exercise.xpReward}'),
-                ),
+                _buildExerciseChip('Type', exercise.typeDisplay),
+                _buildExerciseChip('Difficulty', exercise.difficultyDisplay),
+                _buildExerciseChip('XP', '${exercise.xpReward}'),
               ],
             ),
           ],
@@ -641,6 +657,7 @@ class _LessonDetailPageState extends State<LessonDetailPage> {
         ),
         overflow: TextOverflow.ellipsis,
         maxLines: 1,
+        softWrap: false,
       ),
     );
   }

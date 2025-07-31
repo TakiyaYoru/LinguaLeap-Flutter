@@ -167,4 +167,74 @@ class AuthService {
       return null;
     }
   }
+
+  // ✅ NEW: Update user profile
+  static Future<Map<String, dynamic>?> updateProfile(Map<String, dynamic> profileData) async {
+    try {
+      print('📝 [AuthService] Updating profile...');
+      print('📤 Profile data: $profileData');
+
+      final MutationOptions options = MutationOptions(
+        document: gql(AuthQueries.updateProfile),
+        variables: {
+          'input': profileData,
+        },
+        fetchPolicy: FetchPolicy.networkOnly,
+      );
+
+      final QueryResult result = await GraphQLService.client.mutate(options);
+      
+      print('📥 Update profile result: ${result.data}');
+      
+      if (result.hasException) {
+        print('❌ Update profile error: ${result.exception}');
+        throw Exception(result.exception.toString());
+      }
+
+      print('✅ Profile updated successfully');
+      return result.data?['updateProfile'];
+    } catch (e) {
+      print('❌ Update profile exception: $e');
+      return null;
+    }
+  }
+
+  // ✅ NEW: Google authentication
+  static Future<Map<String, dynamic>?> googleAuth(String token) async {
+    try {
+      print('🔐 [AuthService] Google authentication...');
+      print('📤 Token: ${token.substring(0, 20)}...');
+
+      final MutationOptions options = MutationOptions(
+        document: gql(AuthQueries.googleAuth),
+        variables: {
+          'input': {
+            'token': token,
+          },
+        },
+        fetchPolicy: FetchPolicy.networkOnly,
+      );
+
+      final QueryResult result = await GraphQLService.client.mutate(options);
+      
+      print('📥 Google auth result: ${result.data}');
+      
+      if (result.hasException) {
+        print('❌ [AuthService] Error in Google auth: ${result.exception}');
+        throw Exception(result.exception.toString());
+      }
+
+      final authData = result.data?['googleAuth'];
+      if (authData != null && authData['success'] == true) {
+        // Save token
+        await saveToken(authData['token']);
+        print('✅ Google authentication successful');
+      }
+
+      return authData;
+    } catch (e) {
+      print('❌ [AuthService] Exception in Google auth: $e');
+      return null;
+    }
+  }
 }

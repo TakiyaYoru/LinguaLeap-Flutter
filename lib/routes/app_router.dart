@@ -16,10 +16,12 @@ import '../pages/practice/listening_practice_page.dart';
 import '../pages/practice/listening_exercise_detail_page.dart';
 import '../pages/practice/reading_practice_page.dart';
 import '../pages/practice/reading_exercise_detail_page.dart';
-import '../pages/practice/speaking_practice_page.dart';
-import '../pages/practice/speaking_exercise_detail_page.dart';
-import '../pages/practice/speaking_test_page.dart';
-import '../pages/profile_page.dart';
+         import '../pages/practice/speaking_practice_page.dart';
+         import '../pages/practice/speaking_exercise_detail_page.dart';
+         import '../pages/practice/speaking_test_page.dart';
+         import '../pages/profile_page.dart';
+         import '../pages/profile/edit_profile_page.dart';
+         import '../models/user_model.dart';
 import '../pages/settings_page.dart';
 import '../network/auth_service.dart';
 import '../models/user_model.dart';
@@ -46,10 +48,11 @@ class AppRouter {
   static const String listeningExerciseDetail = '/listening-exercise/:exerciseId';
   static const String readingPractice = '/reading-practice';
   static const String readingExerciseDetail = '/reading-exercise/:exerciseId';
-  static const String speakingPractice = '/speaking-practice';
-  static const String speakingExerciseDetail = '/speaking-exercise/:exerciseId';
-  static const String speakingTest = '/speaking-test';
-  static const String profile = '/profile';
+           static const String speakingPractice = '/speaking-practice';
+         static const String speakingExerciseDetail = '/speaking-exercise/:exerciseId';
+         static const String speakingTest = '/speaking-test';
+         static const String profile = '/profile';
+         static const String editProfile = '/edit-profile';
   static const String settings = '/settings';
   static const String courseDetail = '/course/:courseId';
   static const String unitDetail = '/unit/:unitId';
@@ -357,6 +360,16 @@ class AppRouter {
               GoRoute(
                 path: profile,
                 builder: (context, state) => const ProfilePage(),
+              ),
+              GoRoute(
+                path: editProfile,
+                builder: (context, state) {
+                  final user = state.extra as UserModel?;
+                  if (user != null) {
+                    return EditProfilePage(user: user);
+                  }
+                  return const ProfilePage(); // Fallback
+                },
               ),
             ],
           ),
