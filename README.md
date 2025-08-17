@@ -1,44 +1,42 @@
 # 📘 LinguaLeap – English Learning App
 
-**LinguaLeap** là ứng dụng học tiếng Anh thông minh được phát triển bằng **Flutter** (frontend) và **Node.js + GraphQL + MongoDB** (backend). Ứng dụng tích hợp **gamification** (XP, streaks, hearts, leaderboard), **AI Exercise Generation**, bản đồ học tương tác, hệ thống khóa học–bài học–bài tập đầy đủ, và quản trị nội dung cho admin. App hỗ trợ Android, iOS và Web với giao diện lấy cảm hứng từ iOS.
+**LinguaLeap** is an intelligent English learning application developed with **Flutter** (frontend) and **Node.js + GraphQL + MongoDB** (backend). The app integrates **gamification** (XP, streaks, hearts, leaderboard), **AI Exercise Generation**, interactive learning map, comprehensive course-lesson-exercise system, and content management for admins. The app supports Android, iOS, and Web with an iOS-inspired interface.
 
-> Tài liệu & mã nguồn tham chiếu: báo cáo đồ án (PDF) và 2 repo Flutter/Backend.
 
 ---
 
-## ✨ Tính năng chính
+## ✨ Main Features
 
-### 👤 Người dùng
-- **Đăng ký/Đăng nhập** với kiểm tra hợp lệ, **JWT** và lưu **session/auto-login** (SharedPreferences).  
-- **Hồ sơ người dùng**: tên hiển thị, avatar, thống kê học tập (XP, streak, cấp độ).  
-- **Bản đồ học (Learn Map)** tương tác: Section → Unit → Lesson; trạng thái màu (Locked/Unlocked/In-progress/Completed), **mở khóa thông minh** sau khi hoàn thành bài trước; tích hợp **Hearts** và **đếm ngược hồi phục**.  
-- **Làm bài tập đa dạng**: Multiple Choice, Fill-in-the-blank, Translation, Listening, Matching,…; tính điểm theo độ chính xác & độ khó; cộng **XP**/**Diamonds**.  
-- **Mục tiêu & thành tích**: Daily goals (số bài, XP, thời gian luyện), achievements kèm animation.  
-- **Thi đua/xếp hạng**: **Leaderboard** theo XP & cấp độ.  
-- **Quản lý từ vựng** và luyện tập kỹ năng (Reading/Listening/Vocabulary practice).  
-- **Cài đặt**: Dark/Light Mode, quản lý tài khoản (đăng xuất, đổi mật khẩu).
+### 👤 Users
+- **Registration/Login** with validation, **JWT** and **session/auto-login** storage (SharedPreferences).  
+- **User Profile**: display name, avatar, learning statistics (XP, streak, level).  
+- **Interactive Learn Map**: Section → Unit → Lesson; color status (Locked/Unlocked/In-progress/Completed), **smart unlock** after completing previous lessons; integrated **Hearts** and **recovery countdown**.  
+- **Diverse exercises**: Multiple Choice, Fill-in-the-blank, Translation, Listening, Matching, etc.; scoring based on accuracy & difficulty; earn **XP**/**Diamonds**.  
+- **Goals & achievements**: Daily goals (number of lessons, XP, practice time), achievements with animations.  
+- **Competition/ranking**: **Leaderboard** by XP & level.  
+- **Vocabulary management** and skill practice (Reading/Listening/Vocabulary practice).  
+- **Settings**: Dark/Light Mode, account management (logout, change password).
 
 ### 🛠️ Admin
-- **Quản trị nội dung**: CRUD **Course/Unit/Lesson/Exercise** (theme/icon/màu/điều kiện mở khóa).  
-- **28 dạng bài tập (exercise subtypes)** với **CRUD** đầy đủ, **chỉ admin** được thao tác. Dữ liệu nội dung dạng **JSON** linh hoạt.  
-- **AI Exercise Generation**: sinh bài tập (vocab/grammar) từ input, giúp tạo nội dung nhanh.  
+- **Content management**: CRUD **Course/Unit/Lesson/Exercise** (theme/icon/color/unlock conditions).  
+- **28 exercise subtypes** with complete **CRUD**, **admin-only** operations. Content data in flexible **JSON** format.  
+- **AI Exercise Generation**: generate exercises (vocab/grammar) from input, helps create content quickly.  
 
-> Ảnh minh họa:  
+> Illustrative images:  
 > ![Auth](docs/images/auth.png)  
 > ![Learn Map](docs/images/learnmap.png)   
 > ![Gamification](docs/images/gamification.png)  
 > ![Exercise](docs/images/exercise.png)  
 
-
 ---
 
-## 🧱 Kiến trúc tổng quan
+## 🧱 Overall Architecture
 
 ```
 LinguaLeap/
 ├─ frontend/ (Flutter)
 │  └─ lib/
-│     ├─ constants/          # Hằng số & config
+│     ├─ constants/          # Constants & config
 │     ├─ graphql/            # GQL queries/mutations (auth, courses, exercises,...)
 │     ├─ models/             # Data models (User, Course, Unit, Lesson, Exercise,...)
 │     ├─ network/            # Services (GraphQL client, AuthService, CourseService,...)
@@ -53,7 +51,7 @@ LinguaLeap/
       ├─ data/models/        # Mongoose schemas (user, course, unit, lesson, exercise,...)
       ├─ graphql/            # Resolvers (auth, learnmap, courses, exercise CRUD,...)
       ├─ utils/              # JWT, AI service, TTS service, etc.
-      ├─ config.js           # Kết nối MongoDB Atlas
+      ├─ config.js           # MongoDB Atlas connection
       └─ index.js            # Entry (Express + GraphQL Yoga)
 ```
 
@@ -64,7 +62,7 @@ LinguaLeap/
 ### Frontend (Flutter)
 - **Flutter 3.x**, **Dart 3.x**
 - **graphql_flutter**, **go_router** (StatefulShellRoute)
-- **Provider** (theme/state nhẹ)
+- **Provider** (theme/lightweight state)
 - **SharedPreferences** (JWT, theme)
 - **iOS-inspired UI** + Dark/Light mode
 
@@ -73,12 +71,12 @@ LinguaLeap/
 - **GraphQL Yoga** (+ Apollo-compatible)
 - **MongoDB Atlas** (Mongoose)
 - **JWT + bcrypt** (Auth)
-- **Nodemailer** (quên mật khẩu), **Firebase** (lưu trữ – planned)
+- **Nodemailer** (forgot password), **Firebase** (storage – planned)
 - **Vercel/Render** (deploy)
 
 ---
 
-## ⚙️ Cài đặt & chạy
+## ⚙️ Installation & Setup
 
 ### 1) Backend
 ```bash
@@ -86,7 +84,7 @@ git clone https://github.com/takiyayoru/lingualeap-backend
 cd lingualeap-backend
 npm install
 
-# Tạo file .env (ví dụ)
+# Create .env file (example)
 cat > .env << 'EOF'
 PORT=4001
 NODE_ENV=development
@@ -107,17 +105,15 @@ flutter pub get
 flutter run
 ```
 
-### 3) Tài khoản test
+### 3) Test Accounts
 - **User**  
   Email: `Tes12@gmail.com` — Password: `123456`
 - **Admin**  
   Email: `admin@gmail.com` — Password: `123456`
 
-> (Có script tạo admin & kiểm thử CRUD trong backend: `create_admin_user.js`, `debug_auth.js`.)
-
 ---
 
-## 🔌 Ví dụ GraphQL
+## 🔌 GraphQL Examples
 
 **Query courses**
 ```graphql
@@ -160,13 +156,17 @@ mutation CreateExercise($input: CreateExerciseInput!) {
 
 ---
 
-## 🔐 Bảo mật & Quyền hạn
-- **JWT** cho xác thực, gửi qua header `Authorization: Bearer <token>`.  
-- **Bcrypt** hash mật khẩu.  
-- **Phân quyền**: chỉ **admin** mới có quyền **CRUD exercises** và nội dung học.  
-- **Validation** đầu-cuối cho input (email, password strength, uniqueness).
+## 🔐 Security & Permissions
+- **JWT** for authentication, sent via `Authorization: Bearer <token>` header.  
+- **Bcrypt** password hashing.  
+- **Role-based access**: only **admins** have **CRUD exercises** and learning content permissions.  
+- **End-to-end validation** for input (email, password strength, uniqueness).
 
----
+## 📬 Contact Information
 
-## 📝 License
-MIT — © 2025, Phan Nguyễn Duy Kha
+- 👤 **Author**: Phan Nguyen Duy Kha (Takiya Yoru) 
+- 📧 Email: [duykhafoot@gmail.com](mailto:duykhafoot@gmail.com)  
+- 🌐 GitHub: [TakiyaYoru](https://github.com/takiyayoru)  
+- 🔗 LinkedIn: [linkedin.com/in/takiyayoru](https://www.linkedin.com/in/takiyayoru/)  
+
+If you have questions, feedback, or want to collaborate, please contact via the channels above.
